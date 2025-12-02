@@ -1,0 +1,109 @@
+.team-performance h2 {
+  margin-bottom: 0.5rem;
+  color: #172B4D;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.period-info {
+  color: #6B778C;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  background-color: #f9fafb;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.metric-header h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #6B778C;
+  font-weight: 500;
+}
+
+.metric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0052CC;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.metric-unit {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #6B778C;
+}
+
+.metric-description {
+  font-size: 0.85rem;
+  color: #6B778C;
+}
+
+.performance-insights {
+  background-color: #E3FCEF;
+  border: 1px solid #ABF5D1;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.performance-insights h3 {
+  margin: 0 0 1rem 0;
+  color: #006644;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.performance-insights ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.performance-insights li {
+  padding: 0.5rem 0;
+  color: #006644;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.performance-insights li:before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+  color: #00875A;
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
