@@ -8,13 +8,27 @@ The dashboard is configured to display data from a specific subset of projects a
 - Projects: **DevOps**, **TechOps**, **Technology Group**
 - Project: **DTI** (filtered by specific team IDs)
 
+Service Desk trends filter tickets by:
+- **Combined View**: Three teams from the DTI project
+- **DevOps View**: Single DevOps team from the DTI project
+
 This filtering is applied across all dashboard sections and metrics.
 
 ## Features
 
+The dashboard is organized into three main tabs:
+
+### Overview Tab
 - **Project Overview**: View filtered projects with issue counts and project leads
 - **Issue Statistics**: Visual representations of issues by status, type, priority, and assignee
 - **Team Performance Metrics**: Track cycle time, lead time, throughput, and other key metrics
+
+### Initiatives Tab
+- **Technology Initiatives**: Track progress of technology-related initiatives with custom fields and completion percentages
+
+### Service Desk Tab
+- **Service Desk Trends**: Combined view of service desk tickets across multiple teams with resolution metrics and 30-day trend graphs
+- **DevOps Service Desk**: Dedicated view for DevOps team service desk tickets with the same metrics and visualizations
 
 ## Prerequisites
 
@@ -38,7 +52,11 @@ jira-dashboard/
     │   ├── components/
     │   │   ├── ProjectOverview.js
     │   │   ├── IssueStatistics.js
-    │   │   └── TeamPerformance.js
+    │   │   ├── TeamPerformance.js
+    │   │   ├── TechnologyInitiatives.js
+    │   │   ├── ServiceDeskTrends.js
+    │   │   ├── ServiceDeskTrends.css
+    │   │   └── DevOpsServiceDesk.js
     │   ├── App.js
     │   ├── App.css
     │   └── index.js
@@ -97,22 +115,27 @@ The backend provides the following endpoints:
 - `GET /api/statistics` - Get issue statistics (by status, type, priority, assignee)
 - `GET /api/performance?days=30` - Get team performance metrics
 - `GET /api/overview` - Get project overview with issue counts
+- `GET /api/technology-initiatives` - Get technology initiatives with custom fields
+- `GET /api/service-desk-trends?days=90` - Get service desk trends for all configured teams
+- `GET /api/service-desk-trends-devops?days=90` - Get service desk trends for DevOps team only
 
 ## Dashboard Sections
 
-### Project Overview
+### Overview Tab
+
+#### Project Overview
 Displays all active projects with:
 - Project name and key
 - Total issue count
 - Project lead
 
-### Issue Statistics
+#### Issue Statistics
 Visualizes issues using:
 - Pie charts for status and type distribution
 - Bar charts for priority distribution
 - Top 10 assignees by issue count
 
-### Team Performance Metrics
+#### Team Performance Metrics
 Shows key performance indicators:
 - Average cycle time (days)
 - Average lead time (days)
@@ -120,6 +143,31 @@ Shows key performance indicators:
 - Total and resolved issues
 - Issues in progress
 - Actionable insights
+
+### Initiatives Tab
+
+#### Technology Initiatives
+Tracks technology-focused initiatives with:
+- Initiative name and key
+- Status and type
+- Completion percentage based on custom field
+- Priority level
+- Assignee information
+
+### Service Desk Tab
+
+#### Service Desk Trends (Combined Teams)
+Shows metrics for all configured service desk teams:
+- Average resolution time (days and hours)
+- Total tickets created vs resolved
+- Resolution rate percentage
+- 30-day trend line graph showing open tickets over time
+
+#### DevOps Service Desk Trends
+Dedicated view for DevOps team with:
+- Same metrics as combined view
+- Filtered specifically to DevOps team tickets
+- Independent 30-day trend visualization
 
 ## Customization
 
@@ -150,8 +198,25 @@ axios.get('/api/performance?days=60') // Last 60 days
 ```
 
 ### Modifying Charts
-Charts are built using Recharts. To customize, edit the chart components in:
+Charts are built using Recharts for the Overview tab. To customize, edit the chart components in:
 - `src/components/IssueStatistics.js`
+
+Service Desk trend graphs use custom SVG line charts in:
+- `src/components/ServiceDeskTrends.js`
+- `src/components/DevOpsServiceDesk.js`
+
+### Modifying Service Desk Filters
+To change which teams are included in service desk trends, update the JQL queries in `backend/server.js`:
+
+**Combined Service Desk** (line ~533):
+```javascript
+jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72, 9888ca76-8551-47b3-813f-4bf5df9e9762) AND created >= "${dateStr}" ORDER BY created DESC`
+```
+
+**DevOps Service Desk** (line ~665):
+```javascript
+jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND created >= "${dateStr}" ORDER BY created DESC`
+```
 
 ## Security Notes
 
@@ -176,9 +241,10 @@ Charts are built using Recharts. To customize, edit the chart components in:
 
 ## Technologies Used
 
-- **Frontend**: React, Axios, Recharts
+- **Frontend**: React, Axios, Recharts, Custom SVG Charts
 - **Backend**: Node.js, Express, Axios
 - **API**: Jira REST API v3
+- **Styling**: Custom CSS with responsive design
 
 ## License
 
