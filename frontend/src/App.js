@@ -7,6 +7,7 @@ import ProjectOverview from './components/ProjectOverview';
 import InitiativeProgress from './components/InitiativeProgress';
 import TechnologyInitiatives from './components/TechnologyInitiatives';
 import ServiceDeskTrends from './components/ServiceDeskTrends';
+import DevOpsServiceDesk from './components/DevOpsServiceDesk';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,7 @@ function App() {
   const [initiatives, setInitiatives] = useState(null);
   const [technologyInitiatives, setTechnologyInitiatives] = useState(null);
   const [serviceDeskTrends, setServiceDeskTrends] = useState(null);
+  const [devopsServiceDesk, setDevopsServiceDesk] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -28,13 +30,14 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [statsRes, perfRes, projRes, initRes, techInitRes, serviceDeskRes] = await Promise.all([
+      const [statsRes, perfRes, projRes, initRes, techInitRes, serviceDeskRes, devopsRes] = await Promise.all([
         axios.get('/api/statistics'),
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
         axios.get('/api/initiatives'),
         axios.get('/api/technology-initiatives'),
-        axios.get('/api/service-desk-trends?days=90')
+        axios.get('/api/service-desk-trends?days=90'),
+        axios.get('/api/service-desk-trends-devops?days=90')
       ]);
 
       setStatistics(statsRes.data);
@@ -43,6 +46,7 @@ function App() {
       setInitiatives(initRes.data);
       setTechnologyInitiatives(techInitRes.data);
       setServiceDeskTrends(serviceDeskRes.data);
+      setDevopsServiceDesk(devopsRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.error || 'Failed to fetch data from Jira');
@@ -137,6 +141,10 @@ function App() {
           <>
             <section className="dashboard-section">
               <ServiceDeskTrends trends={serviceDeskTrends} />
+            </section>
+
+            <section className="dashboard-section">
+              <DevOpsServiceDesk trends={devopsServiceDesk} />
             </section>
           </>
         )}

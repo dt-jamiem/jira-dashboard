@@ -630,6 +630,120 @@ app.get('/api/service-desk-trends', async (req, res) => {
   }
 });
 
+// Get DevOps-specific service desk trends
+app.get('/api/service-desk-trends-devops', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 90;
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
+    const dateStr = dateFrom.toISOString().split('T')[0];
+
+    let allIssues = [];
+    let nextPageToken = null;
+
+    // Fetch DevOps team tickets from the last N days
+    do {
+      const requestBody = {
+        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND created >= "${dateStr}" ORDER BY created DESC`,
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      console.log(`Fetched ${response.data.issues?.length || 0} DevOps service desk issues, total so far: ${allIssues.length}, isLast: ${response.data.isLast}`);
+
+      if (response.data.isLast || allIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`DevOps Service Desk Trends: Collected ${allIssues.length} total issues from last ${days} days`);
+
+    // Group tickets by creation date (daily)
+    const ticketsByDate = {};
+    const resolvedByDate = {};
+    const resolutionTimes = [];
+
+    allIssues.forEach(issue => {
+      const created = new Date(issue.fields.created);
+      const dateKey = created.toISOString().split('T')[0];
+
+      // Count created tickets by date
+      ticketsByDate[dateKey] = (ticketsByDate[dateKey] || 0) + 1;
+
+      // Count resolved tickets by date and calculate resolution time
+      if (issue.fields.resolutiondate) {
+        const resolved = new Date(issue.fields.resolutiondate);
+        const resolvedDateKey = resolved.toISOString().split('T')[0];
+        resolvedByDate[resolvedDateKey] = (resolvedByDate[resolvedDateKey] || 0) + 1;
+
+        // Calculate resolution time in hours
+        const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
+        resolutionTimes.push(resolutionTimeHours);
+      }
+    });
+
+    // Calculate average resolution time
+    const avgResolutionTime = resolutionTimes.length > 0
+      ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
+      : 0;
+
+    // Convert to sorted arrays and calculate cumulative open tickets
+    const sortedDates = Object.keys(ticketsByDate).sort();
+    let cumulativeOpen = 0;
+    const volumeData = sortedDates.map(date => {
+      const created = ticketsByDate[date] || 0;
+      const resolved = resolvedByDate[date] || 0;
+      cumulativeOpen += created - resolved;
+      return {
+        date,
+        created,
+        resolved,
+        openTickets: Math.max(0, cumulativeOpen)
+      };
+    });
+
+    // Calculate current status breakdown
+    const statusBreakdown = {};
+    const priorityBreakdown = {};
+    allIssues.forEach(issue => {
+      const status = issue.fields.status?.name || 'Unknown';
+      const priority = issue.fields.priority?.name || 'Unknown';
+      statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+      priorityBreakdown[priority] = (priorityBreakdown[priority] || 0) + 1;
+    });
+
+    res.json({
+      volumeData,
+      resolutionMetrics: {
+        avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
+        avgResolutionTimeDays: Math.round((avgResolutionTime / 24) * 10) / 10,
+        totalResolved: resolutionTimes.length,
+        totalCreated: allIssues.length,
+        resolutionRate: allIssues.length > 0
+          ? Math.round((resolutionTimes.length / allIssues.length) * 100)
+          : 0
+      },
+      statusBreakdown,
+      priorityBreakdown,
+      periodDays: days
+    });
+  } catch (error) {
+    console.error('Error fetching DevOps service desk trends:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch DevOps service desk trends',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Jira Dashboard API running on http://localhost:${PORT}`);
   console.log(`Connecting to Jira: ${process.env.JIRA_URL}`);
