@@ -744,6 +744,122 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
   }
 });
 
+// Get average age of open DevOps tickets trend
+app.get('/api/devops-open-tickets-age', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+
+    // Fetch currently open tickets for DevOps team
+    let allIssues = [];
+    let nextPageToken = null;
+
+    const jql = `Project = DTI AND "Team[Team]" = 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3 AND statusCategory != Done ORDER BY created DESC`;
+
+    do {
+      const requestBody = {
+        jql,
+        maxResults: 50,
+        fields: ['created', 'status', 'priority', 'summary', 'key']
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      console.log(`Fetched ${response.data.issues?.length || 0} open DevOps tickets, total so far: ${allIssues.length}, isLast: ${response.data.isLast}`);
+
+      if (response.data.isLast || allIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`DevOps Open Tickets: Collected ${allIssues.length} total open issues`);
+
+    // Calculate age trend over the last N days
+    const now = new Date();
+    const trendData = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+      const checkDate = new Date(now);
+      checkDate.setDate(checkDate.getDate() - i);
+      checkDate.setHours(0, 0, 0, 0);
+
+      const nextDate = new Date(checkDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      // Filter tickets that were open on this date
+      const ticketsOpenOnDate = allIssues.filter(issue => {
+        const createdDate = new Date(issue.fields.created);
+        // Ticket was created before or on this date
+        return createdDate < nextDate;
+      });
+
+      // Calculate average age in days for tickets open on this date
+      let totalAge = 0;
+      ticketsOpenOnDate.forEach(issue => {
+        const createdDate = new Date(issue.fields.created);
+        const ageInDays = Math.floor((checkDate - createdDate) / (1000 * 60 * 60 * 24));
+        totalAge += ageInDays;
+      });
+
+      const avgAge = ticketsOpenOnDate.length > 0
+        ? Math.round((totalAge / ticketsOpenOnDate.length) * 10) / 10
+        : 0;
+
+      trendData.push({
+        date: checkDate.toISOString().split('T')[0],
+        avgAge: avgAge,
+        openCount: ticketsOpenOnDate.length
+      });
+    }
+
+    // Current stats
+    const currentTotalAge = allIssues.reduce((sum, issue) => {
+      const createdDate = new Date(issue.fields.created);
+      const ageInDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+      return sum + ageInDays;
+    }, 0);
+
+    const currentAvgAge = allIssues.length > 0
+      ? Math.round((currentTotalAge / allIssues.length) * 10) / 10
+      : 0;
+
+    // Status breakdown of open tickets
+    const statusBreakdown = {};
+    allIssues.forEach(issue => {
+      const status = issue.fields.status?.name || 'Unknown';
+      statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+    });
+
+    res.json({
+      trendData,
+      currentMetrics: {
+        avgAge: currentAvgAge,
+        totalOpen: allIssues.length,
+        oldestTicketAge: allIssues.length > 0
+          ? Math.max(...allIssues.map(issue => {
+              const createdDate = new Date(issue.fields.created);
+              return Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+            }))
+          : 0
+      },
+      statusBreakdown,
+      periodDays: days
+    });
+  } catch (error) {
+    console.error('Error fetching DevOps open tickets age:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch DevOps open tickets age',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Jira Dashboard API running on http://localhost:${PORT}`);
   console.log(`Connecting to Jira: ${process.env.JIRA_URL}`);
