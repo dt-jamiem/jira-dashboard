@@ -4,7 +4,6 @@ import './App.css';
 import IssueStatistics from './components/IssueStatistics';
 import TeamPerformance from './components/TeamPerformance';
 import ProjectOverview from './components/ProjectOverview';
-import InitiativeProgress from './components/InitiativeProgress';
 import TechnologyInitiatives from './components/TechnologyInitiatives';
 import ServiceDeskTrends from './components/ServiceDeskTrends';
 import DevOpsServiceDesk from './components/DevOpsServiceDesk';
@@ -15,7 +14,6 @@ function App() {
   const [statistics, setStatistics] = useState(null);
   const [performance, setPerformance] = useState(null);
   const [projects, setProjects] = useState(null);
-  const [initiatives, setInitiatives] = useState(null);
   const [technologyInitiatives, setTechnologyInitiatives] = useState(null);
   const [serviceDeskTrends, setServiceDeskTrends] = useState(null);
   const [devopsServiceDesk, setDevopsServiceDesk] = useState(null);
@@ -30,11 +28,10 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [statsRes, perfRes, projRes, initRes, techInitRes, serviceDeskRes, devopsRes] = await Promise.all([
+      const [statsRes, perfRes, projRes, techInitRes, serviceDeskRes, devopsRes] = await Promise.all([
         axios.get('/api/statistics'),
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
-        axios.get('/api/initiatives'),
         axios.get('/api/technology-initiatives'),
         axios.get('/api/service-desk-trends?days=90'),
         axios.get('/api/service-desk-trends-devops?days=90')
@@ -43,7 +40,6 @@ function App() {
       setStatistics(statsRes.data);
       setPerformance(perfRes.data);
       setProjects(projRes.data);
-      setInitiatives(initRes.data);
       setTechnologyInitiatives(techInitRes.data);
       setServiceDeskTrends(serviceDeskRes.data);
       setDevopsServiceDesk(devopsRes.data);
@@ -126,15 +122,9 @@ function App() {
         )}
 
         {activeTab === 'initiatives' && (
-          <>
-            <section className="dashboard-section">
-              <InitiativeProgress initiatives={initiatives} />
-            </section>
-
-            <section className="dashboard-section">
-              <TechnologyInitiatives initiatives={technologyInitiatives} />
-            </section>
-          </>
+          <section className="dashboard-section">
+            <TechnologyInitiatives initiatives={technologyInitiatives} />
+          </section>
         )}
 
         {activeTab === 'servicedesk' && (
