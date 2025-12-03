@@ -11,7 +11,7 @@ function ServiceDeskTrends({ trends }) {
     );
   }
 
-  const { volumeData, resolutionMetrics, statusBreakdown, priorityBreakdown, periodDays } = trends;
+  const { volumeData, resolutionMetrics, periodDays } = trends;
 
   // Get last 30 days of data for display
   const recentData = volumeData.slice(-30);
@@ -157,52 +157,6 @@ function ServiceDeskTrends({ trends }) {
         </div>
       </div>
 
-      {/* Status and Priority Breakdowns */}
-      <div className="breakdown-grid">
-        <div className="breakdown-section">
-          <h3>Status Breakdown</h3>
-          <div className="breakdown-list">
-            {Object.entries(statusBreakdown)
-              .sort((a, b) => b[1] - a[1])
-              .map(([status, count]) => (
-                <div key={status} className="breakdown-item">
-                  <span className="breakdown-name">{status}</span>
-                  <span className="breakdown-count">{count}</span>
-                  <div className="breakdown-bar">
-                    <div
-                      className="breakdown-fill"
-                      style={{
-                        width: `${(count / resolutionMetrics.totalCreated) * 100}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        <div className="breakdown-section">
-          <h3>Priority Breakdown</h3>
-          <div className="breakdown-list">
-            {Object.entries(priorityBreakdown)
-              .sort((a, b) => b[1] - a[1])
-              .map(([priority, count]) => (
-                <div key={priority} className="breakdown-item">
-                  <span className="breakdown-name">{priority}</span>
-                  <span className="breakdown-count">{count}</span>
-                  <div className="breakdown-bar">
-                    <div
-                      className="breakdown-fill"
-                      style={{
-                        width: `${(count / resolutionMetrics.totalCreated) * 100}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
