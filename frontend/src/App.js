@@ -15,6 +15,7 @@ function App() {
   const [projects, setProjects] = useState(null);
   const [initiatives, setInitiatives] = useState(null);
   const [technologyInitiatives, setTechnologyInitiatives] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchData();
@@ -78,26 +79,49 @@ function App() {
         </button>
       </header>
 
+      <nav className="tabs-nav">
+        <button
+          className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'initiatives' ? 'active' : ''}`}
+          onClick={() => setActiveTab('initiatives')}
+        >
+          Initiatives
+        </button>
+      </nav>
+
       <main className="dashboard-container">
-        <section className="dashboard-section">
-          <ProjectOverview projects={projects} />
-        </section>
+        {activeTab === 'overview' && (
+          <>
+            <section className="dashboard-section">
+              <ProjectOverview projects={projects} />
+            </section>
 
-        <section className="dashboard-section">
-          <IssueStatistics statistics={statistics} />
-        </section>
+            <section className="dashboard-section">
+              <IssueStatistics statistics={statistics} />
+            </section>
 
-        <section className="dashboard-section">
-          <TeamPerformance performance={performance} />
-        </section>
+            <section className="dashboard-section">
+              <TeamPerformance performance={performance} />
+            </section>
+          </>
+        )}
 
-        <section className="dashboard-section">
-          <InitiativeProgress initiatives={initiatives} />
-        </section>
+        {activeTab === 'initiatives' && (
+          <>
+            <section className="dashboard-section">
+              <InitiativeProgress initiatives={initiatives} />
+            </section>
 
-        <section className="dashboard-section">
-          <TechnologyInitiatives initiatives={technologyInitiatives} />
-        </section>
+            <section className="dashboard-section">
+              <TechnologyInitiatives initiatives={technologyInitiatives} />
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
