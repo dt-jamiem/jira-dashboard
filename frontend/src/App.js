@@ -6,6 +6,7 @@ import TeamPerformance from './components/TeamPerformance';
 import ProjectOverview from './components/ProjectOverview';
 import InitiativeProgress from './components/InitiativeProgress';
 import TechnologyInitiatives from './components/TechnologyInitiatives';
+import ServiceDeskTrends from './components/ServiceDeskTrends';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,7 @@ function App() {
   const [projects, setProjects] = useState(null);
   const [initiatives, setInitiatives] = useState(null);
   const [technologyInitiatives, setTechnologyInitiatives] = useState(null);
+  const [serviceDeskTrends, setServiceDeskTrends] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -26,12 +28,13 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [statsRes, perfRes, projRes, initRes, techInitRes] = await Promise.all([
+      const [statsRes, perfRes, projRes, initRes, techInitRes, serviceDeskRes] = await Promise.all([
         axios.get('/api/statistics'),
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
         axios.get('/api/initiatives'),
-        axios.get('/api/technology-initiatives')
+        axios.get('/api/technology-initiatives'),
+        axios.get('/api/service-desk-trends?days=90')
       ]);
 
       setStatistics(statsRes.data);
@@ -39,6 +42,7 @@ function App() {
       setProjects(projRes.data);
       setInitiatives(initRes.data);
       setTechnologyInitiatives(techInitRes.data);
+      setServiceDeskTrends(serviceDeskRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.error || 'Failed to fetch data from Jira');
@@ -92,6 +96,12 @@ function App() {
         >
           Initiatives
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'servicedesk' ? 'active' : ''}`}
+          onClick={() => setActiveTab('servicedesk')}
+        >
+          Service Desk
+        </button>
       </nav>
 
       <main className="dashboard-container">
@@ -119,6 +129,14 @@ function App() {
 
             <section className="dashboard-section">
               <TechnologyInitiatives initiatives={technologyInitiatives} />
+            </section>
+          </>
+        )}
+
+        {activeTab === 'servicedesk' && (
+          <>
+            <section className="dashboard-section">
+              <ServiceDeskTrends trends={serviceDeskTrends} />
             </section>
           </>
         )}
