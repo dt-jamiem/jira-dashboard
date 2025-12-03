@@ -323,6 +323,100 @@ app.get('/api/overview', async (req, res) => {
   }
 });
 
+// Get initiative completion data grouped by Project Short Name
+app.get('/api/initiatives', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.maxResults) || 1000;
+    let allIssues = [];
+    let nextPageToken = null;
+
+    // Use JQL to filter for issues with Project Short Name populated
+    const initiativesJQL = 'Project IN (DTI, DevOps, "Technology Group", TechOps) AND "Project Short Name[Short text]" IS NOT EMPTY';
+
+    // Fetch all issues with pagination
+    do {
+      const requestBody = {
+        jql: `${initiativesJQL} ORDER BY created DESC`,
+        fields: ['summary', 'status', 'customfield_10574'] // customfield_10574 is Project Short Name
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      console.log(`Fetched ${response.data.issues?.length || 0} initiative issues, total so far: ${allIssues.length}, isLast: ${response.data.isLast}`);
+
+      if (response.data.isLast || allIssues.length >= limit) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`Initiatives: Collected ${allIssues.length} total issues with Project Short Name`);
+
+    // Group issues by Project Short Name (customfield_10574)
+    const initiatives = {};
+
+    allIssues.forEach(issue => {
+      if (!issue || !issue.fields) {
+        return;
+      }
+
+      const projectShortName = issue.fields.customfield_10574 || 'Unassigned';
+      const status = issue.fields.status?.name || 'Unknown';
+      const isDone = ['Done', 'Closed', 'Resolved', 'Canceled'].includes(status);
+
+      if (!initiatives[projectShortName]) {
+        initiatives[projectShortName] = {
+          name: projectShortName,
+          total: 0,
+          completed: 0,
+          inProgress: 0,
+          todo: 0,
+          issues: []
+        };
+      }
+
+      initiatives[projectShortName].total++;
+      if (isDone) {
+        initiatives[projectShortName].completed++;
+      } else if (status.toLowerCase().includes('progress')) {
+        initiatives[projectShortName].inProgress++;
+      } else {
+        initiatives[projectShortName].todo++;
+      }
+
+      initiatives[projectShortName].issues.push({
+        key: issue.key,
+        summary: issue.fields.summary,
+        status: status
+      });
+    });
+
+    // Calculate completion percentage and convert to array
+    const initiativesList = Object.values(initiatives)
+      .map(initiative => ({
+        ...initiative,
+        completionPercentage: initiative.total > 0
+          ? Math.round((initiative.completed / initiative.total) * 100)
+          : 0
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    res.json(initiativesList);
+  } catch (error) {
+    console.error('Error fetching initiatives:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch initiatives',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Jira Dashboard API running on http://localhost:${PORT}`);
   console.log(`Connecting to Jira: ${process.env.JIRA_URL}`);
