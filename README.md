@@ -29,6 +29,7 @@ The dashboard is organized into three main tabs:
 ### Service Desk Tab
 - **Service Desk Trends**: Combined view of service desk tickets across multiple teams with resolution metrics and 30-day trend graphs
 - **DevOps Service Desk**: Dedicated view for DevOps team service desk tickets with the same metrics and visualizations
+- **DevOps Open Tickets Age Trend**: Tracks the average age of open DevOps tickets over time with current metrics and 30-day trend visualization
 
 ## Prerequisites
 
@@ -56,7 +57,8 @@ jira-dashboard/
     │   │   ├── TechnologyInitiatives.js
     │   │   ├── ServiceDeskTrends.js
     │   │   ├── ServiceDeskTrends.css
-    │   │   └── DevOpsServiceDesk.js
+    │   │   ├── DevOpsServiceDesk.js
+    │   │   └── DevOpsOpenTicketsAge.js
     │   ├── App.js
     │   ├── App.css
     │   └── index.js
@@ -118,6 +120,7 @@ The backend provides the following endpoints:
 - `GET /api/technology-initiatives` - Get technology initiatives with custom fields
 - `GET /api/service-desk-trends?days=90` - Get service desk trends for all configured teams
 - `GET /api/service-desk-trends-devops?days=90` - Get service desk trends for DevOps team only
+- `GET /api/devops-open-tickets-age?days=30` - Get average age trend of open DevOps tickets
 
 ## Dashboard Sections
 
@@ -169,6 +172,15 @@ Dedicated view for DevOps team with:
 - Filtered specifically to DevOps team tickets
 - Independent 30-day trend visualization
 
+#### DevOps Open Tickets Age Trend
+Tracks the average age of currently open DevOps tickets:
+- Current average age of all open tickets (in days)
+- Total count of open tickets
+- Age of the oldest open ticket
+- 30-day trend line showing how average age has changed over time
+- Status breakdown of open tickets
+- Uses `statusCategory != Done` for accurate open ticket filtering
+
 ## Customization
 
 ### Modifying the Data Filter
@@ -204,6 +216,7 @@ Charts are built using Recharts for the Overview tab. To customize, edit the cha
 Service Desk trend graphs use custom SVG line charts in:
 - `src/components/ServiceDeskTrends.js`
 - `src/components/DevOpsServiceDesk.js`
+- `src/components/DevOpsOpenTicketsAge.js`
 
 ### Modifying Service Desk Filters
 To change which teams are included in service desk trends, update the JQL queries in `backend/server.js`:
