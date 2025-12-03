@@ -5,6 +5,7 @@ import IssueStatistics from './components/IssueStatistics';
 import TeamPerformance from './components/TeamPerformance';
 import ProjectOverview from './components/ProjectOverview';
 import InitiativeProgress from './components/InitiativeProgress';
+import TechnologyInitiatives from './components/TechnologyInitiatives';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -13,6 +14,7 @@ function App() {
   const [performance, setPerformance] = useState(null);
   const [projects, setProjects] = useState(null);
   const [initiatives, setInitiatives] = useState(null);
+  const [technologyInitiatives, setTechnologyInitiatives] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -23,17 +25,19 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [statsRes, perfRes, projRes, initRes] = await Promise.all([
+      const [statsRes, perfRes, projRes, initRes, techInitRes] = await Promise.all([
         axios.get('/api/statistics'),
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
-        axios.get('/api/initiatives')
+        axios.get('/api/initiatives'),
+        axios.get('/api/technology-initiatives')
       ]);
 
       setStatistics(statsRes.data);
       setPerformance(perfRes.data);
       setProjects(projRes.data);
       setInitiatives(initRes.data);
+      setTechnologyInitiatives(techInitRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.error || 'Failed to fetch data from Jira');
@@ -89,6 +93,10 @@ function App() {
 
         <section className="dashboard-section">
           <InitiativeProgress initiatives={initiatives} />
+        </section>
+
+        <section className="dashboard-section">
+          <TechnologyInitiatives initiatives={technologyInitiatives} />
         </section>
       </main>
     </div>

@@ -417,6 +417,105 @@ app.get('/api/initiatives', async (req, res) => {
   }
 });
 
+// Get Technology Group initiatives grouped by component
+app.get('/api/technology-initiatives', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.maxResults) || 1000;
+    let allIssues = [];
+    let nextPageToken = null;
+
+    // JQL to filter for Technology Group issues with components
+    const techInitiativesJQL = 'Project = "Technology Group" AND component IS NOT EMPTY';
+
+    // Fetch all issues with pagination
+    do {
+      const requestBody = {
+        jql: `${techInitiativesJQL} ORDER BY created DESC`,
+        fields: ['summary', 'status', 'components']
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      console.log(`Fetched ${response.data.issues?.length || 0} technology initiative issues, total so far: ${allIssues.length}, isLast: ${response.data.isLast}`);
+
+      if (response.data.isLast || allIssues.length >= limit) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`Technology Initiatives: Collected ${allIssues.length} total issues with components`);
+
+    // Group issues by component
+    const initiatives = {};
+
+    allIssues.forEach(issue => {
+      if (!issue || !issue.fields) {
+        return;
+      }
+
+      const components = issue.fields.components || [];
+      const status = issue.fields.status?.name || 'Unknown';
+      const isDone = ['Done', 'Closed', 'Resolved', 'Canceled'].includes(status);
+
+      // An issue can have multiple components, so we count it for each
+      components.forEach(component => {
+        const componentName = component.name || 'Unassigned';
+
+        if (!initiatives[componentName]) {
+          initiatives[componentName] = {
+            name: componentName,
+            total: 0,
+            completed: 0,
+            inProgress: 0,
+            todo: 0,
+            issues: []
+          };
+        }
+
+        initiatives[componentName].total++;
+        if (isDone) {
+          initiatives[componentName].completed++;
+        } else if (status.toLowerCase().includes('progress')) {
+          initiatives[componentName].inProgress++;
+        } else {
+          initiatives[componentName].todo++;
+        }
+
+        initiatives[componentName].issues.push({
+          key: issue.key,
+          summary: issue.fields.summary,
+          status: status
+        });
+      });
+    });
+
+    // Calculate completion percentage and convert to array
+    const initiativesList = Object.values(initiatives)
+      .map(initiative => ({
+        ...initiative,
+        completionPercentage: initiative.total > 0
+          ? Math.round((initiative.completed / initiative.total) * 100)
+          : 0
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    res.json(initiativesList);
+  } catch (error) {
+    console.error('Error fetching technology initiatives:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch technology initiatives',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Jira Dashboard API running on http://localhost:${PORT}`);
   console.log(`Connecting to Jira: ${process.env.JIRA_URL}`);
