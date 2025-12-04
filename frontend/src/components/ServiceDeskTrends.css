@@ -1,14 +1,16 @@
 .service-desk-trends h2 {
   margin-bottom: 0.5rem;
-  color: #172B4D;
+  color: #323E48;
   font-size: 1.75rem;
-  font-weight: 600;
+  font-family: 'Calibri Light', 'Calibri', sans-serif;
+  font-weight: 300;
 }
 
 .subtitle {
   color: #6B778C;
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
+  font-family: 'Calibri', sans-serif;
 }
 
 .metrics-grid {
@@ -28,18 +30,21 @@
 
 .metric-label {
   font-size: 0.9rem;
+  font-family: 'Calibri', sans-serif;
   color: #6B778C;
   margin-bottom: 0.5rem;
 }
 
 .metric-value {
   font-size: 2rem;
+  font-family: 'Calibri', sans-serif;
   font-weight: 700;
-  color: #0052CC;
+  color: #A9DE33;
 }
 
 .metric-subtext {
   font-size: 0.85rem;
+  font-family: 'Calibri', sans-serif;
   color: #6B778C;
   margin-top: 0.25rem;
 }

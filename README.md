@@ -1,6 +1,6 @@
 # Jira Dashboard
 
-A comprehensive dashboard for visualizing Jira data with React frontend and Node.js backend.
+A comprehensive dashboard for visualizing Jira data with React frontend and Node.js backend, styled with DataTorque's corporate branding.
 
 ## Data Scope
 
@@ -181,6 +181,29 @@ Tracks the average age of currently open DevOps tickets:
 - Status breakdown of open tickets
 - Uses `statusCategory != Done` for accurate open ticket filtering
 
+## Design & Branding
+
+The dashboard features DataTorque's corporate branding and styling:
+
+### Visual Design
+- **Logo**: DataTorque logo prominently displayed in the header
+- **Color Scheme**:
+  - Primary Green: `#A9DE33` (buttons, accents, active states)
+  - Dark Charcoal: `#323E48` (headers, primary text)
+  - Light Gray: `#E7E6E6` (background)
+  - Secondary Dark: `#44546A` (header gradient)
+- **Typography**: Calibri font family throughout for a professional, consistent look
+  - Headers: Calibri Light (300 weight)
+  - Body text: Calibri
+- **Layout**: Centered text in metric cards and statistics for improved readability
+
+### Consistent Styling
+All components follow DataTorque's design language:
+- Header with dark gradient background
+- Green accent colors for interactive elements
+- Clean, professional metric cards with centered content
+- Light color palette for reduced eye strain during extended viewing
+
 ## Customization
 
 ### Modifying the Data Filter
@@ -257,7 +280,8 @@ jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) A
 - **Frontend**: React, Axios, Recharts, Custom SVG Charts
 - **Backend**: Node.js, Express, Axios
 - **API**: Jira REST API v3
-- **Styling**: Custom CSS with responsive design
+- **Styling**: Custom CSS with DataTorque branding and responsive design
+- **Design**: DataTorque corporate color scheme and typography (Calibri font family)
 
 ## License
 

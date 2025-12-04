@@ -1,8 +1,9 @@
 .team-performance h2 {
   margin-bottom: 0.5rem;
-  color: #172B4D;
+  color: #323E48;
   font-size: 1.75rem;
-  font-weight: 600;
+  font-family: 'Calibri Light', 'Calibri', sans-serif;
+  font-weight: 300;
 }
 
 .period-info {
@@ -24,6 +25,7 @@
   border-radius: 8px;
   padding: 1.5rem;
   transition: all 0.3s ease;
+  text-align: center;
 }
 
 .metric-card:hover {
@@ -34,6 +36,7 @@
 .metric-header h3 {
   margin: 0 0 1rem 0;
   font-size: 1rem;
+  font-family: 'Calibri', sans-serif;
   color: #6B778C;
   font-weight: 500;
 }
@@ -46,10 +49,12 @@
 
 .metric-value {
   font-size: 2rem;
+  font-family: 'Calibri', sans-serif;
   font-weight: 700;
-  color: #0052CC;
+  color: #A9DE33;
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 0.5rem;
 }
 
@@ -65,17 +70,19 @@
 }
 
 .performance-insights {
-  background-color: #E3FCEF;
-  border: 1px solid #ABF5D1;
+  background-color: #F5FDE8;
+  border: 1px solid #D9F0B3;
   border-radius: 8px;
   padding: 1.5rem;
   margin-top: 2rem;
+  text-align: center;
 }
 
 .performance-insights h3 {
   margin: 0 0 1rem 0;
-  color: #006644;
+  color: #323E48;
   font-size: 1.1rem;
+  font-family: 'Calibri', sans-serif;
   font-weight: 600;
 }
 
@@ -87,11 +94,13 @@
 
 .performance-insights li {
   padding: 0.5rem 0;
-  color: #006644;
+  color: #323E48;
   font-size: 0.95rem;
+  font-family: 'Calibri', sans-serif;
   line-height: 1.5;
   position: relative;
   padding-left: 1.5rem;
+  text-align: left;
 }
 
 .performance-insights li:before {
@@ -99,7 +108,7 @@
   position: absolute;
   left: 0;
   font-weight: bold;
-  color: #00875A;
+  color: #A9DE33;
 }
 
 @media (max-width: 768px) {

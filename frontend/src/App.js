@@ -81,7 +81,10 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Jira Dashboard</h1>
+        <h1>
+          <img src="/datatorque-logo.png" alt="DataTorque" className="logo-image" />
+          Jira Dashboard
+        </h1>
         <button className="refresh-btn" onClick={fetchData}>
           Refresh Data
         </button>
