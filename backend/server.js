@@ -527,10 +527,11 @@ app.get('/api/service-desk-trends', async (req, res) => {
     let allIssues = [];
     let nextPageToken = null;
 
-    // Fetch all DTI tickets from the last N days
+    // Fetch ALL DTI tickets (including older ones that might still be open)
+    // We need all tickets to accurately calculate open ticket counts at any point in time
     do {
       const requestBody = {
-        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72, 9888ca76-8551-47b3-813f-4bf5df9e9762) AND created >= "${dateStr}" ORDER BY created DESC`,
+        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72, 9888ca76-8551-47b3-813f-4bf5df9e9762) AND (created >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
         fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
       };
 
@@ -550,7 +551,7 @@ app.get('/api/service-desk-trends', async (req, res) => {
       }
     } while (nextPageToken);
 
-    console.log(`Service Desk Trends: Collected ${allIssues.length} total issues from last ${days} days`);
+    console.log(`Service Desk Trends: Collected ${allIssues.length} total issues (including older open tickets)`);
 
     // Group tickets by creation date (daily)
     const ticketsByDate = {};
@@ -581,20 +582,48 @@ app.get('/api/service-desk-trends', async (req, res) => {
       ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
       : 0;
 
-    // Convert to sorted arrays and calculate cumulative open tickets
-    const sortedDates = Object.keys(ticketsByDate).sort();
-    let cumulativeOpen = 0;
-    const volumeData = sortedDates.map(date => {
-      const created = ticketsByDate[date] || 0;
-      const resolved = resolvedByDate[date] || 0;
-      cumulativeOpen += created - resolved;
-      return {
-        date,
+    // Generate date range for the trend window
+    const trendStartDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const volumeData = [];
+    const currentDate = new Date(trendStartDate);
+
+    while (currentDate <= today) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      const endOfDay = new Date(currentDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Count tickets that were:
+      // 1. Created on or before this date
+      // 2. Either not resolved, or resolved after this date
+      const openOnThisDate = allIssues.filter(issue => {
+        const createdDate = new Date(issue.fields.created);
+        const isCreatedByThisDate = createdDate <= endOfDay;
+
+        if (!isCreatedByThisDate) return false;
+
+        if (!issue.fields.resolutiondate) {
+          return true; // Not resolved, so it's open
+        }
+
+        const resolvedDate = new Date(issue.fields.resolutiondate);
+        return resolvedDate > endOfDay; // Resolved after this date, so it was open on this date
+      }).length;
+
+      const created = ticketsByDate[dateKey] || 0;
+      const resolved = resolvedByDate[dateKey] || 0;
+
+      volumeData.push({
+        date: dateKey,
         created,
         resolved,
-        openTickets: Math.max(0, cumulativeOpen)
-      };
-    });
+        openTickets: openOnThisDate
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
 
     // Calculate current status breakdown
     const statusBreakdown = {};
@@ -641,10 +670,11 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     let allIssues = [];
     let nextPageToken = null;
 
-    // Fetch DevOps team tickets from the last N days
+    // Fetch ALL DevOps team tickets (including older ones that might still be open)
+    // We need all tickets to accurately calculate open ticket counts at any point in time
     do {
       const requestBody = {
-        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND created >= "${dateStr}" ORDER BY created DESC`,
+        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
         fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
       };
 
@@ -664,7 +694,7 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
       }
     } while (nextPageToken);
 
-    console.log(`DevOps Service Desk Trends: Collected ${allIssues.length} total issues from last ${days} days`);
+    console.log(`DevOps Service Desk Trends: Collected ${allIssues.length} total issues (including older open tickets)`);
 
     // Group tickets by creation date (daily)
     const ticketsByDate = {};
@@ -695,20 +725,48 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
       ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
       : 0;
 
-    // Convert to sorted arrays and calculate cumulative open tickets
-    const sortedDates = Object.keys(ticketsByDate).sort();
-    let cumulativeOpen = 0;
-    const volumeData = sortedDates.map(date => {
-      const created = ticketsByDate[date] || 0;
-      const resolved = resolvedByDate[date] || 0;
-      cumulativeOpen += created - resolved;
-      return {
-        date,
+    // Generate date range for the trend window
+    const trendStartDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const volumeData = [];
+    const currentDate = new Date(trendStartDate);
+
+    while (currentDate <= today) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      const endOfDay = new Date(currentDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Count tickets that were:
+      // 1. Created on or before this date
+      // 2. Either not resolved, or resolved after this date
+      const openOnThisDate = allIssues.filter(issue => {
+        const createdDate = new Date(issue.fields.created);
+        const isCreatedByThisDate = createdDate <= endOfDay;
+
+        if (!isCreatedByThisDate) return false;
+
+        if (!issue.fields.resolutiondate) {
+          return true; // Not resolved, so it's open
+        }
+
+        const resolvedDate = new Date(issue.fields.resolutiondate);
+        return resolvedDate > endOfDay; // Resolved after this date, so it was open on this date
+      }).length;
+
+      const created = ticketsByDate[dateKey] || 0;
+      const resolved = resolvedByDate[dateKey] || 0;
+
+      volumeData.push({
+        date: dateKey,
         created,
         resolved,
-        openTickets: Math.max(0, cumulativeOpen)
-      };
-    });
+        openTickets: openOnThisDate
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
 
     // Calculate current status breakdown
     const statusBreakdown = {};
