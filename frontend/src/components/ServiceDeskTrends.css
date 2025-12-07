@@ -42,6 +42,18 @@
   color: #A9DE33;
 }
 
+.metric-value.good {
+  color: #A9DE33;
+}
+
+.metric-value.warning {
+  color: #FFA500;
+}
+
+.metric-value.bad {
+  color: #E74C3C;
+}
+
 .metric-subtext {
   font-size: 0.85rem;
   font-family: 'Calibri', sans-serif;

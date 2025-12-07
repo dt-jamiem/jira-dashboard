@@ -35,8 +35,8 @@ function App() {
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
         axios.get('/api/technology-initiatives'),
-        axios.get('/api/service-desk-trends?days=90'),
-        axios.get('/api/service-desk-trends-devops?days=90'),
+        axios.get('/api/service-desk-trends?days=30'),
+        axios.get('/api/service-desk-trends-devops?days=30'),
         axios.get('/api/devops-open-tickets-age?days=30')
       ]);
 

@@ -527,11 +527,11 @@ app.get('/api/service-desk-trends', async (req, res) => {
     let allIssues = [];
     let nextPageToken = null;
 
-    // Fetch ALL DTI tickets (including older ones that might still be open)
-    // We need all tickets to accurately calculate open ticket counts at any point in time
+    // Fetch DTI tickets that were created OR resolved in the period, plus currently open tickets
+    // This ensures we have all data needed for accurate metrics
     do {
       const requestBody = {
-        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72, 9888ca76-8551-47b3-813f-4bf5df9e9762) AND (created >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
+        jql: `Project = DTI AND "Team[Team]" IN (9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
         fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
       };
 
@@ -557,6 +557,12 @@ app.get('/api/service-desk-trends', async (req, res) => {
     const ticketsByDate = {};
     const resolvedByDate = {};
     const resolutionTimes = [];
+    const periodStartDate = new Date(dateStr);
+    const periodEndDate = new Date();
+    periodEndDate.setHours(23, 59, 59, 999);
+
+    let totalCreatedInPeriod = 0;
+    let totalResolvedInPeriod = 0;
 
     allIssues.forEach(issue => {
       const created = new Date(issue.fields.created);
@@ -565,15 +571,23 @@ app.get('/api/service-desk-trends', async (req, res) => {
       // Count created tickets by date
       ticketsByDate[dateKey] = (ticketsByDate[dateKey] || 0) + 1;
 
+      // Count tickets created within the period
+      if (created >= periodStartDate && created <= periodEndDate) {
+        totalCreatedInPeriod++;
+      }
+
       // Count resolved tickets by date and calculate resolution time
       if (issue.fields.resolutiondate) {
         const resolved = new Date(issue.fields.resolutiondate);
         const resolvedDateKey = resolved.toISOString().split('T')[0];
         resolvedByDate[resolvedDateKey] = (resolvedByDate[resolvedDateKey] || 0) + 1;
 
-        // Calculate resolution time in hours
-        const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
-        resolutionTimes.push(resolutionTimeHours);
+        // Only count resolution time for tickets resolved within the period
+        if (resolved >= periodStartDate && resolved <= periodEndDate) {
+          totalResolvedInPeriod++;
+          const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
+          resolutionTimes.push(resolutionTimeHours);
+        }
       }
     });
 
@@ -640,10 +654,10 @@ app.get('/api/service-desk-trends', async (req, res) => {
       resolutionMetrics: {
         avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
         avgResolutionTimeDays: Math.round((avgResolutionTime / 24) * 10) / 10,
-        totalResolved: resolutionTimes.length,
-        totalCreated: allIssues.length,
-        resolutionRate: allIssues.length > 0
-          ? Math.round((resolutionTimes.length / allIssues.length) * 100)
+        totalResolved: totalResolvedInPeriod,
+        totalCreated: totalCreatedInPeriod,
+        resolutionRate: totalCreatedInPeriod > 0
+          ? Math.round((totalResolvedInPeriod / totalCreatedInPeriod) * 100)
           : 0
       },
       statusBreakdown,
@@ -670,11 +684,11 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     let allIssues = [];
     let nextPageToken = null;
 
-    // Fetch ALL DevOps team tickets (including older ones that might still be open)
-    // We need all tickets to accurately calculate open ticket counts at any point in time
+    // Fetch DevOps tickets that were created OR resolved in the period, plus currently open tickets
+    // This ensures we have all data needed for accurate metrics
     do {
       const requestBody = {
-        jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
+        jql: `Project = DTI AND "Team[Team]" IN (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
         fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
       };
 
@@ -700,6 +714,12 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     const ticketsByDate = {};
     const resolvedByDate = {};
     const resolutionTimes = [];
+    const periodStartDate = new Date(dateStr);
+    const periodEndDate = new Date();
+    periodEndDate.setHours(23, 59, 59, 999);
+
+    let totalCreatedInPeriod = 0;
+    let totalResolvedInPeriod = 0;
 
     allIssues.forEach(issue => {
       const created = new Date(issue.fields.created);
@@ -708,15 +728,23 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
       // Count created tickets by date
       ticketsByDate[dateKey] = (ticketsByDate[dateKey] || 0) + 1;
 
+      // Count tickets created within the period
+      if (created >= periodStartDate && created <= periodEndDate) {
+        totalCreatedInPeriod++;
+      }
+
       // Count resolved tickets by date and calculate resolution time
       if (issue.fields.resolutiondate) {
         const resolved = new Date(issue.fields.resolutiondate);
         const resolvedDateKey = resolved.toISOString().split('T')[0];
         resolvedByDate[resolvedDateKey] = (resolvedByDate[resolvedDateKey] || 0) + 1;
 
-        // Calculate resolution time in hours
-        const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
-        resolutionTimes.push(resolutionTimeHours);
+        // Only count resolution time for tickets resolved within the period
+        if (resolved >= periodStartDate && resolved <= periodEndDate) {
+          totalResolvedInPeriod++;
+          const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
+          resolutionTimes.push(resolutionTimeHours);
+        }
       }
     });
 
@@ -783,10 +811,10 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
       resolutionMetrics: {
         avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
         avgResolutionTimeDays: Math.round((avgResolutionTime / 24) * 10) / 10,
-        totalResolved: resolutionTimes.length,
-        totalCreated: allIssues.length,
-        resolutionRate: allIssues.length > 0
-          ? Math.round((resolutionTimes.length / allIssues.length) * 100)
+        totalResolved: totalResolvedInPeriod,
+        totalCreated: totalCreatedInPeriod,
+        resolutionRate: totalCreatedInPeriod > 0
+          ? Math.round((totalResolvedInPeriod / totalCreatedInPeriod) * 100)
           : 0
       },
       statusBreakdown,

@@ -2,6 +2,16 @@
 
 A comprehensive dashboard for visualizing Jira data with React frontend and Node.js backend, styled with DataTorque's corporate branding.
 
+## Recent Updates
+
+### December 2025
+- **Conditional Formatting**: Added color-coded metrics for Service Desk performance targets
+  - Green: Meeting targets (≤5 days resolution time, ≥90% resolution rate)
+  - Red: Below targets
+- **Metrics Period Update**: Changed Service Desk trends from 90 days to 30 days for more current insights
+- **Corrected Metrics Calculations**: Fixed Service Desk metrics to accurately count tickets created/resolved within the specified period
+- **Team Scope Correction**: Updated JQL queries to use correct team IDs matching manual queries
+
 ## Data Scope
 
 The dashboard is configured to display data from a specific subset of projects and teams:
@@ -28,7 +38,11 @@ The dashboard is organized into three main tabs:
 
 ### Service Desk Tab
 - **Service Desk Trends**: Combined view of service desk tickets across multiple teams with resolution metrics and 30-day trend graphs
+  - Conditional formatting highlights metrics performance against targets (green for good, red for needs improvement)
+  - Average resolution time target: ≤ 5 days
+  - Resolution rate target: ≥ 90%
 - **DevOps Service Desk**: Dedicated view for DevOps team service desk tickets with the same metrics and visualizations
+  - Same conditional formatting and targets as Combined View
 - **DevOps Open Tickets Age Trend**: Tracks the average age of open DevOps tickets over time with current metrics and 30-day trend visualization
 
 ## Prerequisites
@@ -118,8 +132,8 @@ The backend provides the following endpoints:
 - `GET /api/performance?days=30` - Get team performance metrics
 - `GET /api/overview` - Get project overview with issue counts
 - `GET /api/technology-initiatives` - Get technology initiatives with custom fields
-- `GET /api/service-desk-trends?days=90` - Get service desk trends for all configured teams
-- `GET /api/service-desk-trends-devops?days=90` - Get service desk trends for DevOps team only
+- `GET /api/service-desk-trends?days=30` - Get service desk trends for all configured teams (default: 30 days)
+- `GET /api/service-desk-trends-devops?days=30` - Get service desk trends for DevOps team only (default: 30 days)
 - `GET /api/devops-open-tickets-age?days=30` - Get average age trend of open DevOps tickets
 
 ## Dashboard Sections
@@ -161,16 +175,18 @@ Tracks technology-focused initiatives with:
 
 #### Service Desk Trends (Combined Teams)
 Shows metrics for all configured service desk teams:
-- Average resolution time (days and hours)
-- Total tickets created vs resolved
-- Resolution rate percentage
+- Average resolution time (days and hours) - calculated from tickets resolved in the 30-day period
+- Total tickets created vs resolved - counts tickets created/resolved within the 30-day period
+- Resolution rate percentage - calculated as (resolved / created) within the period
 - 30-day trend line graph showing open tickets over time
+- **Conditional Formatting**: Metrics display in green when meeting targets (≤5 days resolution time, ≥90% resolution rate), red when below targets
 
 #### DevOps Service Desk Trends
 Dedicated view for DevOps team with:
 - Same metrics as combined view
 - Filtered specifically to DevOps team tickets
 - Independent 30-day trend visualization
+- **Conditional Formatting**: Same targets and color coding as Combined Teams view
 
 #### DevOps Open Tickets Age Trend
 Tracks the average age of currently open DevOps tickets:
@@ -244,15 +260,17 @@ Service Desk trend graphs use custom SVG line charts in:
 ### Modifying Service Desk Filters
 To change which teams are included in service desk trends, update the JQL queries in `backend/server.js`:
 
-**Combined Service Desk** (line ~533):
+**Combined Service Desk** (line ~534):
 ```javascript
-jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72, 9888ca76-8551-47b3-813f-4bf5df9e9762) AND created >= "${dateStr}" ORDER BY created DESC`
+jql: `Project = DTI AND "Team[Team]" IN (9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`
 ```
 
-**DevOps Service Desk** (line ~665):
+**DevOps Service Desk** (line ~691):
 ```javascript
-jql: `Project = DTI AND "Team[Team]" In (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND created >= "${dateStr}" ORDER BY created DESC`
+jql: `Project = DTI AND "Team[Team]" IN (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`
 ```
+
+Note: The queries fetch tickets that were created OR resolved in the period, plus any currently open tickets. This ensures accurate metrics calculations for tickets created/resolved within the specified timeframe.
 
 ## Security Notes
 

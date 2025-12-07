@@ -13,6 +13,21 @@ function ServiceDeskTrends({ trends }) {
 
   const { volumeData, resolutionMetrics, periodDays } = trends;
 
+  // Target thresholds
+  const RESOLUTION_TIME_TARGET = 5; // days
+  const RESOLUTION_RATE_TARGET = 90; // percent
+
+  // Helper function to determine metric status
+  const getResolutionTimeStatus = (days) => {
+    if (days <= RESOLUTION_TIME_TARGET) return 'good';
+    return 'bad';
+  };
+
+  const getResolutionRateStatus = (rate) => {
+    if (rate >= RESOLUTION_RATE_TARGET) return 'good';
+    return 'bad';
+  };
+
   // Get last 30 days of data for display
   const recentData = volumeData.slice(-30);
 
@@ -49,8 +64,11 @@ function ServiceDeskTrends({ trends }) {
       <div className="metrics-grid">
         <div className="metric-card">
           <div className="metric-label">Average Resolution Time</div>
-          <div className="metric-value">{resolutionMetrics.avgResolutionTimeDays} days</div>
+          <div className={`metric-value ${getResolutionTimeStatus(resolutionMetrics.avgResolutionTimeDays)}`}>
+            {resolutionMetrics.avgResolutionTimeDays} days
+          </div>
           <div className="metric-subtext">({resolutionMetrics.avgResolutionTimeHours} hours)</div>
+          <div className="metric-subtext">Target: ≤ {RESOLUTION_TIME_TARGET} days</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Total Created</div>
@@ -62,7 +80,10 @@ function ServiceDeskTrends({ trends }) {
         </div>
         <div className="metric-card">
           <div className="metric-label">Resolution Rate</div>
-          <div className="metric-value">{resolutionMetrics.resolutionRate}%</div>
+          <div className={`metric-value ${getResolutionRateStatus(resolutionMetrics.resolutionRate)}`}>
+            {resolutionMetrics.resolutionRate}%
+          </div>
+          <div className="metric-subtext">Target: ≥ {RESOLUTION_RATE_TARGET}%</div>
         </div>
       </div>
 
