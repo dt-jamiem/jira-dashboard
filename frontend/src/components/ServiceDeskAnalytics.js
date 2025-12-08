@@ -45,55 +45,6 @@ function ServiceDeskAnalytics({ analytics }) {
         </div>
       </div>
 
-      {/* Incident Root Cause Analysis */}
-      {analytics.incidentAnalysis && analytics.incidentAnalysis.totalIncidents > 0 && (
-        <div className="incident-analysis-section">
-          <h3>🔧 Incident & Build Issue Root Cause Analysis</h3>
-          <div className="incident-summary">
-            <span className="incident-count">
-              {analytics.incidentAnalysis.totalIncidents} incidents/issues analyzed
-            </span>
-            <span className="incident-breakdown">
-              ({analytics.allCounts.issueTypes['[System] Incident'] || 0} Incidents, {' '}
-              {analytics.allCounts.issueTypes['[System] Problem'] || 0} Problems, {' '}
-              {analytics.allCounts.issueTypes['Build Issue'] || 0} Build Issues)
-            </span>
-          </div>
-          <div className="root-causes-grid">
-            {analytics.incidentAnalysis.rootCauses.slice(0, 3).map((cause, index) => (
-              <div key={index} className="root-cause-card">
-                <div className="root-cause-header">
-                  <span className="root-cause-rank">#{index + 1}</span>
-                  <span className="root-cause-name">{cause.category}</span>
-                </div>
-                <div className="root-cause-stats">
-                  <span className="root-cause-count">{cause.count}</span>
-                  <span className="root-cause-label">issues</span>
-                  <span className="root-cause-percentage">{cause.percentage}%</span>
-                </div>
-                <div className="root-cause-bar">
-                  <div
-                    className="root-cause-bar-fill"
-                    style={{ width: `${cause.percentage}%` }}
-                  ></div>
-                </div>
-                {cause.examples && cause.examples.length > 0 && (
-                  <div className="root-cause-examples">
-                    <div className="example-label">Recent examples:</div>
-                    {cause.examples.map((ex, exIndex) => (
-                      <div key={exIndex} className="example-ticket" title={ex.summary}>
-                        <span className="example-key">{ex.key}</span>
-                        <span className="example-summary">{ex.summary.slice(0, 50)}{ex.summary.length > 50 ? '...' : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Key Insights and Request Type Breakdown - Side by Side */}
       <div className="top-insights-grid">
         {/* Key Insights */}
@@ -206,6 +157,55 @@ function ServiceDeskAnalytics({ analytics }) {
           </div>
         </div>
       </div>
+
+      {/* Incident Root Cause Analysis */}
+      {analytics.incidentAnalysis && analytics.incidentAnalysis.totalIncidents > 0 && (
+        <div className="incident-analysis-section">
+          <h3>🔧 Incident & Build Issue Root Cause Analysis</h3>
+          <div className="incident-summary">
+            <span className="incident-count">
+              {analytics.incidentAnalysis.totalIncidents} incidents/issues analyzed
+            </span>
+            <span className="incident-breakdown">
+              ({analytics.allCounts.issueTypes['[System] Incident'] || 0} Incidents, {' '}
+              {analytics.allCounts.issueTypes['[System] Problem'] || 0} Problems, {' '}
+              {analytics.allCounts.issueTypes['Build Issue'] || 0} Build Issues)
+            </span>
+          </div>
+          <div className="root-causes-grid">
+            {analytics.incidentAnalysis.rootCauses.slice(0, 3).map((cause, index) => (
+              <div key={index} className="root-cause-card">
+                <div className="root-cause-header">
+                  <span className="root-cause-rank">#{index + 1}</span>
+                  <span className="root-cause-name">{cause.category}</span>
+                </div>
+                <div className="root-cause-stats">
+                  <span className="root-cause-count">{cause.count}</span>
+                  <span className="root-cause-label">issues</span>
+                  <span className="root-cause-percentage">{cause.percentage}%</span>
+                </div>
+                <div className="root-cause-bar">
+                  <div
+                    className="root-cause-bar-fill"
+                    style={{ width: `${cause.percentage}%` }}
+                  ></div>
+                </div>
+                {cause.examples && cause.examples.length > 0 && (
+                  <div className="root-cause-examples">
+                    <div className="example-label">Recent examples:</div>
+                    {cause.examples.map((ex, exIndex) => (
+                      <div key={exIndex} className="example-ticket" title={ex.summary}>
+                        <span className="example-key">{ex.key}</span>
+                        <span className="example-summary">{ex.summary.slice(0, 50)}{ex.summary.length > 50 ? '...' : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Two Column Layout */}
       <div className="analytics-grid">
