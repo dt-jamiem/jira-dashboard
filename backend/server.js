@@ -1281,6 +1281,74 @@ app.get('/api/service-desk-analytics', async (req, res) => {
         }));
     });
 
+    // Analyze incident and build issue root causes
+    const incidentAnalysis = {
+      totalIncidents: 0,
+      rootCauses: []
+    };
+
+    // Filter for incidents, problems, and build issues
+    const criticalIssues = ticketsInPeriod.filter(issue => {
+      const issueType = issue.fields.issuetype?.name || '';
+      return issueType === '[System] Incident' ||
+             issueType === '[System] Problem' ||
+             issueType === 'Build Issue';
+    });
+
+    incidentAnalysis.totalIncidents = criticalIssues.length;
+
+    // Define root cause patterns
+    const rootCausePatterns = {
+      'Build Pipeline': { pattern: /\b(build|pipeline|compile|nuget|package)\b/i, tickets: [] },
+      'Deployment': { pattern: /\b(deploy|deployment|release)\b/i, tickets: [] },
+      'Database': { pattern: /\b(database|sql|db|query|table|bi refresh)\b/i, tickets: [] },
+      'Server/Infrastructure': { pattern: /\b(server|infrastructure|vm|memory|disk|cpu)\b/i, tickets: [] },
+      'Certificate': { pattern: /\b(certificate|ssl|tls|cert|expired)\b/i, tickets: [] },
+      'Performance': { pattern: /\b(slow|performance|timeout|hang|latency)\b/i, tickets: [] },
+      'Network': { pattern: /\b(network|connectivity|connection|dns)\b/i, tickets: [] },
+      'Application Error': { pattern: /\b(crash|error|exception|fail|down)\b/i, tickets: [] }
+    };
+
+    // Analyze each critical issue
+    criticalIssues.forEach(issue => {
+      const summary = (issue.fields.summary || '').toLowerCase();
+      let description = '';
+      if (issue.fields.description) {
+        if (typeof issue.fields.description === 'string') {
+          description = issue.fields.description.toLowerCase();
+        } else if (typeof issue.fields.description === 'object') {
+          description = JSON.stringify(issue.fields.description).toLowerCase();
+        }
+      }
+      const fullText = `${summary} ${description}`;
+
+      // Check against each pattern
+      Object.keys(rootCausePatterns).forEach(category => {
+        if (rootCausePatterns[category].pattern.test(fullText)) {
+          rootCausePatterns[category].tickets.push({
+            key: issue.key,
+            type: issue.fields.issuetype.name,
+            summary: issue.fields.summary,
+            status: issue.fields.status?.name || 'Unknown',
+            priority: issue.fields.priority?.name || 'Unknown'
+          });
+        }
+      });
+    });
+
+    // Convert to sorted array
+    incidentAnalysis.rootCauses = Object.entries(rootCausePatterns)
+      .map(([category, data]) => ({
+        category,
+        count: data.tickets.length,
+        percentage: criticalIssues.length > 0
+          ? Math.round((data.tickets.length / criticalIssues.length) * 100)
+          : 0,
+        examples: data.tickets.slice(0, 3)
+      }))
+      .filter(rc => rc.count > 0)
+      .sort((a, b) => b.count - a.count);
+
     res.json({
       totalTickets: ticketsInPeriod.length,
       totalResolvedInPeriod: totalResolvedInPeriod,
@@ -1297,6 +1365,7 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       topApplications: sortByCount(applicationMentions),
       applicationExamples: applicationExamples,
       requestTypeBreakdown: requestTypeBreakdown,
+      incidentAnalysis: incidentAnalysis,
       allCounts: {
         issueTypes: issueTypeCounts,
         requestTypes: requestTypeCounts,

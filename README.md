@@ -5,6 +5,13 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### December 2025
+- **Incident Root Cause Analysis**: Added automated root cause pattern detection for incidents and build issues (December 9, 2025)
+  - Analyzes [System] Incident, [System] Problem, and Build Issue types for common patterns
+  - Identifies top 5 root causes: Application Error, Build Pipeline, Deployment, Database, Certificate, Performance, Network, Server/Infrastructure
+  - Visual cards showing count, percentage, and recent examples for each root cause
+  - Color-coded ranking badges and progress bars for quick identification
+  - Hover effects on cards for better interactivity
+  - Helps teams focus attention on systemic issues requiring preventive action
 - **Request Type Sub-Category Analysis**: Enhanced Service Desk Analytics with intelligent request type breakdown (December 9, 2025)
   - Added stacked bar chart visualization showing top 3 sub-categories for each major request type
   - Automated pattern detection within Access Requests (GitHub, Azure, VPN, SQL/Database, Jira, etc.)
@@ -226,6 +233,15 @@ Comprehensive analytics dashboard providing detailed insights into service desk 
   - Resolution rate percentage (tickets resolved / tickets created)
   - Incidents & Build Issues count with percentage of total tickets
   - Average resolution time (orange warning when exceeding 5-day target)
+- **Incident Root Cause Analysis**: Automated pattern detection for incidents and build issues
+  - Analyzes [System] Incident, [System] Problem, and Build Issue types
+  - Displays top 5 root causes with visual cards showing:
+    - Category name with ranking badge
+    - Issue count and percentage of total incidents
+    - Progress bar visualization
+    - Recent example tickets with keys and summaries
+  - Identifies patterns: Application Error, Build Pipeline, Deployment, Database, Certificate, Performance, Network, Server/Infrastructure
+  - Helps teams focus on systemic issues requiring preventive action
 - **Side-by-Side Layout**: Efficient use of horizontal space with Key Insights and Request Type Breakdown displayed next to each other
   - **Key Insights**: Automated analysis highlighting important trends
     - Access request dominance and volume
