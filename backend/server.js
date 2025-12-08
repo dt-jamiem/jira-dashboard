@@ -1148,6 +1148,139 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       ? Math.round((totalResolvedInPeriod / ticketsInPeriod.length) * 100)
       : 0;
 
+    // Analyze sub-categories within each top request type
+    const requestTypeBreakdown = {};
+
+    // Define keywords for each major request type
+    const requestTypeKeywords = {
+      'Access request': [
+        { pattern: /\b(github|git)\b/i, label: 'GitHub/Git' },
+        { pattern: /\bazure\b/i, label: 'Azure' },
+        { pattern: /\b(vpn|watchguard)\b/i, label: 'VPN' },
+        { pattern: /\b(sql|database)\b/i, label: 'SQL/Database' },
+        { pattern: /\bjira\b/i, label: 'Jira' },
+        { pattern: /\b(active directory|ad group)\b/i, label: 'Active Directory' },
+        { pattern: /\b(sharepoint|confluence)\b/i, label: 'SharePoint/Confluence' },
+        { pattern: /\b(claude|ai|copilot)\b/i, label: 'AI Tools' },
+        { pattern: /\b(office 365|teams|outlook)\b/i, label: 'Office 365' },
+        { pattern: /\b(license|subscription)\b/i, label: 'Licenses' }
+      ],
+      'Build or Deployment Issues': [
+        { pattern: /\b(production|prod)\b/i, label: 'Production Issues' },
+        { pattern: /\b(sandbox|test|dev)\b/i, label: 'Sandbox/Test Env' },
+        { pattern: /\b(deployment|deploy)\b/i, label: 'Deployment' },
+        { pattern: /\b(build|pipeline)\b/i, label: 'Build Pipeline' },
+        { pattern: /\b(database|sql|bi refresh)\b/i, label: 'Database/BI' },
+        { pattern: /\b(certificate|ssl|tls)\b/i, label: 'Certificates' },
+        { pattern: /\b(infrastructure|server)\b/i, label: 'Infrastructure' },
+        { pattern: /\b(package|dependency|npm)\b/i, label: 'Dependencies' }
+      ],
+      'General IT Help': [
+        { pattern: /\b(install|installation)\b/i, label: 'Software Install' },
+        { pattern: /\b(license|subscription|renewal)\b/i, label: 'Licensing' },
+        { pattern: /\b(teams|channel)\b/i, label: 'MS Teams' },
+        { pattern: /\b(office|excel|word|powerpoint|project)\b/i, label: 'Office Apps' },
+        { pattern: /\bjira\b/i, label: 'Jira Config' },
+        { pattern: /\b(sharepoint|onedrive)\b/i, label: 'SharePoint/OneDrive' },
+        { pattern: /\b(laptop|hardware|device)\b/i, label: 'Hardware' },
+        { pattern: /\b(email|outlook|inbox)\b/i, label: 'Email' },
+        { pattern: /\b(power bi|power automate|power platform)\b/i, label: 'Power Platform' },
+        { pattern: /\b(account|password|login)\b/i, label: 'Account Issues' }
+      ],
+      'New software': [
+        { pattern: /\b(visual studio|vs code|ide)\b/i, label: 'Development Tools' },
+        { pattern: /\b(office|excel|word|project)\b/i, label: 'Office Suite' },
+        { pattern: /\b(power bi|power automate|power platform)\b/i, label: 'Power Platform' },
+        { pattern: /\b(adobe|design|creative)\b/i, label: 'Adobe/Design Tools' },
+        { pattern: /\b(license|subscription)\b/i, label: 'Licenses' }
+      ],
+      'Server or infrastructure request': [
+        { pattern: /\b(azure|cloud)\b/i, label: 'Azure/Cloud' },
+        { pattern: /\b(database|sql)\b/i, label: 'Database' },
+        { pattern: /\b(certificate|ssl)\b/i, label: 'Certificates' },
+        { pattern: /\b(vm|virtual machine)\b/i, label: 'Virtual Machines' },
+        { pattern: /\b(storage|disk)\b/i, label: 'Storage' }
+      ]
+    };
+
+    // Group tickets by request type and analyze
+    ticketsInPeriod.forEach(issue => {
+      const requestType = issue.fields.customfield_10010?.requestType?.name;
+      if (!requestType || !requestTypeKeywords[requestType]) return;
+
+      if (!requestTypeBreakdown[requestType]) {
+        requestTypeBreakdown[requestType] = {
+          total: 0,
+          subCategories: {}
+        };
+      }
+
+      requestTypeBreakdown[requestType].total++;
+
+      const summary = (issue.fields.summary || '').toLowerCase();
+      let description = '';
+      if (issue.fields.description) {
+        if (typeof issue.fields.description === 'string') {
+          description = issue.fields.description.toLowerCase();
+        } else if (typeof issue.fields.description === 'object' && issue.fields.description.content) {
+          description = JSON.stringify(issue.fields.description).toLowerCase();
+        }
+      }
+      const fullText = `${summary} ${description}`;
+
+      // Check for keyword matches
+      let matched = false;
+      requestTypeKeywords[requestType].forEach(({ pattern, label }) => {
+        if (pattern.test(fullText)) {
+          if (!requestTypeBreakdown[requestType].subCategories[label]) {
+            requestTypeBreakdown[requestType].subCategories[label] = {
+              count: 0,
+              examples: []
+            };
+          }
+          requestTypeBreakdown[requestType].subCategories[label].count++;
+
+          // Store up to 2 examples
+          if (requestTypeBreakdown[requestType].subCategories[label].examples.length < 2) {
+            requestTypeBreakdown[requestType].subCategories[label].examples.push({
+              key: issue.key,
+              summary: issue.fields.summary
+            });
+          }
+          matched = true;
+        }
+      });
+
+      // If no match, categorize as "Other"
+      if (!matched) {
+        if (!requestTypeBreakdown[requestType].subCategories['Other']) {
+          requestTypeBreakdown[requestType].subCategories['Other'] = {
+            count: 0,
+            examples: []
+          };
+        }
+        requestTypeBreakdown[requestType].subCategories['Other'].count++;
+        if (requestTypeBreakdown[requestType].subCategories['Other'].examples.length < 2) {
+          requestTypeBreakdown[requestType].subCategories['Other'].examples.push({
+            key: issue.key,
+            summary: issue.fields.summary
+          });
+        }
+      }
+    });
+
+    // Convert sub-categories to sorted arrays
+    Object.keys(requestTypeBreakdown).forEach(requestType => {
+      const subCats = requestTypeBreakdown[requestType].subCategories;
+      requestTypeBreakdown[requestType].subCategories = Object.entries(subCats)
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([name, data]) => ({
+          name,
+          count: data.count,
+          examples: data.examples
+        }));
+    });
+
     res.json({
       totalTickets: ticketsInPeriod.length,
       totalResolvedInPeriod: totalResolvedInPeriod,
@@ -1163,6 +1296,7 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       topStatuses: sortByCount(statusCounts),
       topApplications: sortByCount(applicationMentions),
       applicationExamples: applicationExamples,
+      requestTypeBreakdown: requestTypeBreakdown,
       allCounts: {
         issueTypes: issueTypeCounts,
         requestTypes: requestTypeCounts,

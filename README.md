@@ -5,6 +5,14 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### December 2025
+- **Request Type Sub-Category Analysis**: Enhanced Service Desk Analytics with intelligent request type breakdown (December 9, 2025)
+  - Added stacked bar chart visualization showing top 3 sub-categories for each major request type
+  - Automated pattern detection within Access Requests (GitHub, Azure, VPN, SQL/Database, Jira, etc.)
+  - Automated pattern detection within Build/Deployment Issues (Production, Sandbox, Certificates, Pipeline, etc.)
+  - Automated pattern detection within General IT Help (Software Install, Licensing, MS Teams, Office Apps, etc.)
+  - Interactive tooltips showing example tickets for each sub-category
+  - Color-coded segments with counts and percentages for easy comparison
+  - Replaced generic "Top Applications/Technologies" with actionable request type insights
 - **Service Desk Analytics**: Added comprehensive Service Desk Analytics component with detailed insights (last 30 days)
   - Summary cards showing total tickets, resolution rate, incidents & build issues count, and average resolution time
   - Conditional formatting highlights when average resolution time exceeds 5-day target
@@ -164,7 +172,7 @@ The backend provides the following endpoints:
 - `GET /api/performance?days=30` - Get team performance metrics
 - `GET /api/overview` - Get project overview with issue counts
 - `GET /api/technology-initiatives` - Get technology initiatives with custom fields
-- `GET /api/service-desk-analytics?days=30` - Get comprehensive service desk analytics with insights (default: 30 days)
+- `GET /api/service-desk-analytics?days=30` - Get comprehensive service desk analytics with insights including request type breakdown analysis (default: 30 days)
 - `GET /api/service-desk-trends?days=30` - Get service desk trends for all configured teams (default: 30 days)
 - `GET /api/service-desk-trends-devops?days=30` - Get service desk trends for DevOps team only (default: 30 days)
 - `GET /api/devops-open-tickets-age?days=30` - Get average age trend of open DevOps tickets
@@ -223,8 +231,7 @@ Comprehensive analytics dashboard providing detailed insights into service desk 
   - Most referenced technologies
   - Build/deployment issue patterns
 - **Visual Analytics**: Interactive charts showing
-  - Top 5 request types with counts
-  - Top 5 applications/technologies mentioned in tickets
+  - **Request Type Breakdown**: Stacked bar chart showing top 3 sub-categories for each major request type (Access Request, Build/Deployment Issues, General IT Help) with interactive tooltips and color-coded segments
   - Workload distribution across top 5 assignees with high-load indicators
   - Priority distribution (Highest, High, Medium, Low)
   - Top 5 requesters by ticket count

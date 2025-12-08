@@ -16,8 +16,6 @@ function ServiceDeskAnalytics({ analytics }) {
   const totalResolvedInPeriod = analytics.totalResolvedInPeriod || 0;
 
   // Get max values for bar chart scaling
-  const maxRequestTypeCount = Math.max(...analytics.topRequestTypes.map(rt => rt.count));
-  const maxAppCount = Math.max(...analytics.topApplications.map(app => app.count));
   const maxAssigneeCount = Math.max(...analytics.topAssignees.map(a => a.count));
 
   return (
@@ -28,7 +26,7 @@ function ServiceDeskAnalytics({ analytics }) {
       <div className="analytics-summary">
         <div className="summary-card">
           <div className="summary-value">{analytics.totalTickets}</div>
-          <div className="summary-label">Total Tickets</div>
+          <div className="summary-label">Total Requests</div>
         </div>
         <div className="summary-card">
           <div className="summary-value">{resolvedPercentage}%</div>
@@ -87,41 +85,76 @@ function ServiceDeskAnalytics({ analytics }) {
       {/* Two Column Layout */}
       <div className="analytics-grid">
 
-        {/* Top Request Types */}
-        <div className="analytics-section">
-          <h3>Top Request Types</h3>
-          <div className="bar-chart">
-            {analytics.topRequestTypes.slice(0, 5).map((rt, index) => (
-              <div key={index} className="bar-item">
-                <div className="bar-label">{rt.name}</div>
-                <div className="bar-container">
-                  <div
-                    className="bar-fill"
-                    style={{ width: `${(rt.count / maxRequestTypeCount) * 100}%` }}
-                  />
-                  <div className="bar-value">{rt.count}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Request Type Breakdown - Stacked Bars */}
+        <div className="analytics-section request-type-breakdown">
+          <h3>Request Type Breakdown (Top 3 Sub-Categories)</h3>
+          <div className="stacked-bar-chart">
+            {analytics.requestTypeBreakdown && Object.entries(analytics.requestTypeBreakdown)
+              .sort((a, b) => b[1].total - a[1].total)
+              .slice(0, 3)
+              .map(([requestType, data], index) => {
+                const top3SubCategories = data.subCategories.slice(0, 3);
+                const top3Total = top3SubCategories.reduce((sum, sc) => sum + sc.count, 0);
+                const othersCount = data.total - top3Total;
+                const colors = ['#6B9BD1', '#A9DE33', '#FFA500', '#95A5A6'];
 
-        {/* Top Applications */}
-        <div className="analytics-section">
-          <h3>Top Applications/Technologies</h3>
-          <div className="bar-chart">
-            {analytics.topApplications.slice(0, 5).map((app, index) => (
-              <div key={index} className="bar-item">
-                <div className="bar-label">{app.name}</div>
-                <div className="bar-container">
-                  <div
-                    className="bar-fill application"
-                    style={{ width: `${(app.count / maxAppCount) * 100}%` }}
-                  />
-                  <div className="bar-value">{app.count}</div>
-                </div>
-              </div>
-            ))}
+                return (
+                  <div key={index} className="stacked-bar-item">
+                    <div className="stacked-bar-label">
+                      <span className="request-type-name">{requestType}</span>
+                      <span className="request-type-total">{data.total} tickets</span>
+                    </div>
+                    <div className="stacked-bar-container">
+                      {top3SubCategories.map((subCat, subIndex) => {
+                        const percentage = ((subCat.count / data.total) * 100).toFixed(1);
+                        return (
+                          <div
+                            key={subIndex}
+                            className="stacked-segment"
+                            style={{
+                              width: `${percentage}%`,
+                              backgroundColor: colors[subIndex]
+                            }}
+                            title={`${subCat.name}: ${subCat.count} (${percentage}%)\n${subCat.examples?.map(ex => `• ${ex.summary}`).join('\n')}`}
+                          >
+                            {parseFloat(percentage) > 10 && (
+                              <span className="segment-label">{subCat.count}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {othersCount > 0 && (
+                        <div
+                          className="stacked-segment"
+                          style={{
+                            width: `${((othersCount / data.total) * 100).toFixed(1)}%`,
+                            backgroundColor: colors[3]
+                          }}
+                          title={`Other: ${othersCount} (${((othersCount / data.total) * 100).toFixed(1)}%)`}
+                        >
+                          {((othersCount / data.total) * 100) > 10 && (
+                            <span className="segment-label">{othersCount}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="stacked-bar-legend">
+                      {top3SubCategories.map((subCat, subIndex) => (
+                        <div key={subIndex} className="legend-item">
+                          <span className="legend-color" style={{ backgroundColor: colors[subIndex] }}></span>
+                          <span className="legend-label">{subCat.name} ({subCat.count})</span>
+                        </div>
+                      ))}
+                      {othersCount > 0 && (
+                        <div className="legend-item">
+                          <span className="legend-color" style={{ backgroundColor: colors[3] }}></span>
+                          <span className="legend-label">Other ({othersCount})</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
