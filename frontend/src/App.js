@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
-import IssueStatistics from './components/IssueStatistics';
 import TeamPerformance from './components/TeamPerformance';
 import ProjectOverview from './components/ProjectOverview';
+import ServiceDeskMetrics from './components/ServiceDeskMetrics';
 import TechnologyInitiatives from './components/TechnologyInitiatives';
 import ServiceDeskTrends from './components/ServiceDeskTrends';
 import DevOpsServiceDesk from './components/DevOpsServiceDesk';
@@ -12,7 +12,6 @@ import DevOpsOpenTicketsAge from './components/DevOpsOpenTicketsAge';
 function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [statistics, setStatistics] = useState(null);
   const [performance, setPerformance] = useState(null);
   const [projects, setProjects] = useState(null);
   const [technologyInitiatives, setTechnologyInitiatives] = useState(null);
@@ -30,8 +29,7 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [statsRes, perfRes, projRes, techInitRes, serviceDeskRes, devopsRes, ageRes] = await Promise.all([
-        axios.get('/api/statistics'),
+      const [perfRes, projRes, techInitRes, serviceDeskRes, devopsRes, ageRes] = await Promise.all([
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
         axios.get('/api/technology-initiatives'),
@@ -40,7 +38,6 @@ function App() {
         axios.get('/api/devops-open-tickets-age?days=30')
       ]);
 
-      setStatistics(statsRes.data);
       setPerformance(perfRes.data);
       setProjects(projRes.data);
       setTechnologyInitiatives(techInitRes.data);
@@ -119,7 +116,10 @@ function App() {
             </section>
 
             <section className="dashboard-section">
-              <IssueStatistics statistics={statistics} />
+              <ServiceDeskMetrics
+                combinedTrends={serviceDeskTrends}
+                devopsTrends={devopsServiceDesk}
+              />
             </section>
 
             <section className="dashboard-section">

@@ -5,6 +5,13 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### December 2025
+- **Incident Resolution Metrics**: Added dedicated incident resolution time tracking for critical issue types
+  - Tracks average resolution time for [System] Incident, [System] Problem, and Build Issue types
+  - Separate metrics for Combined Teams (DTI) and DevOps Team
+  - Displays incident count and resolution times with conditional formatting
+- **Service Desk Metrics on Overview**: Added Service Desk Resolution Metrics component to Overview tab
+  - Shows key resolution metrics including average resolution time, incident resolution time, and resolution rates
+  - Includes conditional formatting based on performance targets
 - **Conditional Formatting**: Added color-coded metrics for Service Desk performance targets
   - Green: Meeting targets (≤5 days resolution time, ≥90% resolution rate)
   - Red: Below targets
@@ -30,7 +37,12 @@ The dashboard is organized into three main tabs:
 
 ### Overview Tab
 - **Project Overview**: View filtered projects with issue counts and project leads
-- **Issue Statistics**: Visual representations of issues by status, type, priority, and assignee
+- **Service Desk Resolution Metrics**: Key performance metrics for service desk operations (last 30 days)
+  - Average Resolution Time for all tickets (with conditional formatting)
+  - Incident Resolution Time for critical issue types ([System] Incident, [System] Problem, Build Issue)
+  - Total Created and Resolved ticket counts
+  - Resolution Rate percentage
+  - Separate metrics shown for Combined Teams (DTI) and DevOps Team
 - **Team Performance Metrics**: Track cycle time, lead time, throughput, and other key metrics
 
 ### Initiatives Tab
@@ -69,6 +81,8 @@ jira-dashboard/
     │   │   ├── IssueStatistics.js
     │   │   ├── TeamPerformance.js
     │   │   ├── TechnologyInitiatives.js
+    │   │   ├── ServiceDeskMetrics.js
+    │   │   ├── ServiceDeskMetrics.css
     │   │   ├── ServiceDeskTrends.js
     │   │   ├── ServiceDeskTrends.css
     │   │   ├── DevOpsServiceDesk.js
@@ -146,11 +160,15 @@ Displays all active projects with:
 - Total issue count
 - Project lead
 
-#### Issue Statistics
-Visualizes issues using:
-- Pie charts for status and type distribution
-- Bar charts for priority distribution
-- Top 10 assignees by issue count
+#### Service Desk Resolution Metrics
+Shows critical service desk performance metrics for the last 30 days:
+- **Combined Teams (DTI)**: Metrics across all configured service desk teams
+  - Average resolution time (days and hours) with conditional formatting
+  - Incident resolution time for [System] Incident, [System] Problem, and Build Issue types
+  - Total tickets created and resolved within the period
+  - Resolution rate percentage
+- **DevOps Team**: Same metrics filtered to DevOps team only
+- Color-coded metrics: Green when meeting targets (≤5 days, ≥90% resolution rate), Red when below targets
 
 #### Team Performance Metrics
 Shows key performance indicators:

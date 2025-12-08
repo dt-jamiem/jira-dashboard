@@ -532,7 +532,7 @@ app.get('/api/service-desk-trends', async (req, res) => {
     do {
       const requestBody = {
         jql: `Project = DTI AND "Team[Team]" IN (9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
-        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype', 'customfield_10010']
       };
 
       if (nextPageToken) {
@@ -557,12 +557,19 @@ app.get('/api/service-desk-trends', async (req, res) => {
     const ticketsByDate = {};
     const resolvedByDate = {};
     const resolutionTimes = [];
+    const incidentResolutionTimes = [];
     const periodStartDate = new Date(dateStr);
     const periodEndDate = new Date();
     periodEndDate.setHours(23, 59, 59, 999);
 
     let totalCreatedInPeriod = 0;
     let totalResolvedInPeriod = 0;
+
+    // Helper function to check if issue is an incident
+    const isIncident = (issue) => {
+      const issueType = issue.fields.issuetype?.name;
+      return issueType === '[System] Incident' || issueType === '[System] Problem' || issueType === 'Build Issue';
+    };
 
     allIssues.forEach(issue => {
       const created = new Date(issue.fields.created);
@@ -587,6 +594,11 @@ app.get('/api/service-desk-trends', async (req, res) => {
           totalResolvedInPeriod++;
           const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
           resolutionTimes.push(resolutionTimeHours);
+
+          // Track incident-specific resolution times
+          if (isIncident(issue)) {
+            incidentResolutionTimes.push(resolutionTimeHours);
+          }
         }
       }
     });
@@ -594,6 +606,11 @@ app.get('/api/service-desk-trends', async (req, res) => {
     // Calculate average resolution time
     const avgResolutionTime = resolutionTimes.length > 0
       ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
+      : 0;
+
+    // Calculate average incident resolution time
+    const avgIncidentResolutionTime = incidentResolutionTimes.length > 0
+      ? incidentResolutionTimes.reduce((a, b) => a + b, 0) / incidentResolutionTimes.length
       : 0;
 
     // Generate date range for the trend window
@@ -654,6 +671,9 @@ app.get('/api/service-desk-trends', async (req, res) => {
       resolutionMetrics: {
         avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
         avgResolutionTimeDays: Math.round((avgResolutionTime / 24) * 10) / 10,
+        avgIncidentResolutionTimeHours: Math.round(avgIncidentResolutionTime * 10) / 10,
+        avgIncidentResolutionTimeDays: Math.round((avgIncidentResolutionTime / 24) * 10) / 10,
+        incidentCount: incidentResolutionTimes.length,
         totalResolved: totalResolvedInPeriod,
         totalCreated: totalCreatedInPeriod,
         resolutionRate: totalCreatedInPeriod > 0
@@ -689,7 +709,7 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     do {
       const requestBody = {
         jql: `Project = DTI AND "Team[Team]" IN (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
-        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype']
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype', 'customfield_10010']
       };
 
       if (nextPageToken) {
@@ -714,12 +734,19 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     const ticketsByDate = {};
     const resolvedByDate = {};
     const resolutionTimes = [];
+    const incidentResolutionTimes = [];
     const periodStartDate = new Date(dateStr);
     const periodEndDate = new Date();
     periodEndDate.setHours(23, 59, 59, 999);
 
     let totalCreatedInPeriod = 0;
     let totalResolvedInPeriod = 0;
+
+    // Helper function to check if issue is an incident
+    const isIncident = (issue) => {
+      const issueType = issue.fields.issuetype?.name;
+      return issueType === '[System] Incident' || issueType === '[System] Problem' || issueType === 'Build Issue';
+    };
 
     allIssues.forEach(issue => {
       const created = new Date(issue.fields.created);
@@ -744,6 +771,11 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
           totalResolvedInPeriod++;
           const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
           resolutionTimes.push(resolutionTimeHours);
+
+          // Track incident-specific resolution times
+          if (isIncident(issue)) {
+            incidentResolutionTimes.push(resolutionTimeHours);
+          }
         }
       }
     });
@@ -751,6 +783,11 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     // Calculate average resolution time
     const avgResolutionTime = resolutionTimes.length > 0
       ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
+      : 0;
+
+    // Calculate average incident resolution time
+    const avgIncidentResolutionTime = incidentResolutionTimes.length > 0
+      ? incidentResolutionTimes.reduce((a, b) => a + b, 0) / incidentResolutionTimes.length
       : 0;
 
     // Generate date range for the trend window
@@ -811,6 +848,9 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
       resolutionMetrics: {
         avgResolutionTimeHours: Math.round(avgResolutionTime * 10) / 10,
         avgResolutionTimeDays: Math.round((avgResolutionTime / 24) * 10) / 10,
+        avgIncidentResolutionTimeHours: Math.round(avgIncidentResolutionTime * 10) / 10,
+        avgIncidentResolutionTimeDays: Math.round((avgIncidentResolutionTime / 24) * 10) / 10,
+        incidentCount: incidentResolutionTimes.length,
         totalResolved: totalResolvedInPeriod,
         totalCreated: totalCreatedInPeriod,
         resolutionRate: totalCreatedInPeriod > 0
