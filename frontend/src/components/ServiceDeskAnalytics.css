@@ -236,13 +236,20 @@
   font-weight: 600;
 }
 
+/* Top Insights Grid - Side by Side Layout */
+.top-insights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
 /* Insights Section */
 .insights-section-top {
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 1.5rem;
-  margin-bottom: 2rem;
 }
 
 .insights-list {
@@ -285,7 +292,7 @@
 
 /* Request Type Breakdown - Stacked Bars */
 .request-type-breakdown {
-  grid-column: 1 / -1;
+  /* No longer spanning full width - takes up half in side-by-side layout */
 }
 
 .stacked-bar-chart {
@@ -386,6 +393,10 @@
 
 /* Responsive Design */
 @media (max-width: 1200px) {
+  .top-insights-grid {
+    grid-template-columns: 1fr;
+  }
+
   .analytics-grid {
     grid-template-columns: 1fr;
   }

@@ -45,45 +45,44 @@ function ServiceDeskAnalytics({ analytics }) {
         </div>
       </div>
 
-      {/* Key Insights */}
-      <div className="insights-section-top">
-        <h3>Key Insights</h3>
-        <div className="insights-list">
-          <div className="insight-item">
-            <span className="insight-icon">📊</span>
-            <span className="insight-text">
-              <strong>Access requests dominate:</strong> {analytics.topRequestTypes[0].count} access requests ({Math.round((analytics.topRequestTypes[0].count / analytics.totalTickets) * 100)}% of all tickets)
-            </span>
+      {/* Key Insights and Request Type Breakdown - Side by Side */}
+      <div className="top-insights-grid">
+        {/* Key Insights */}
+        <div className="insights-section-top">
+          <h3>Key Insights</h3>
+          <div className="insights-list">
+            <div className="insight-item">
+              <span className="insight-icon">📊</span>
+              <span className="insight-text">
+                <strong>Access requests dominate:</strong> {analytics.topRequestTypes[0].count} access requests ({Math.round((analytics.topRequestTypes[0].count / analytics.totalTickets) * 100)}% of all tickets)
+              </span>
+            </div>
+            {analytics.topAssignees[0] && analytics.topAssignees[0].count > analytics.totalTickets * 0.4 && (
+              <div className="insight-item warning">
+                <span className="insight-icon">⚠️</span>
+                <span className="insight-text">
+                  <strong>Workload concentration:</strong> {analytics.topAssignees[0].name} handles {Math.round((analytics.topAssignees[0].count / analytics.totalTickets) * 100)}% of all tickets
+                </span>
+              </div>
+            )}
+            {analytics.topApplications.length > 0 && (
+              <div className="insight-item">
+                <span className="insight-icon">💻</span>
+                <span className="insight-text">
+                  <strong>Most referenced technology:</strong> {analytics.topApplications[0].name} appears in {analytics.topApplications[0].count} tickets ({Math.round((analytics.topApplications[0].count / analytics.totalTickets) * 100)}%)
+                </span>
+              </div>
+            )}
+            {analytics.allCounts.issueTypes['Build Issue'] > 20 && (
+              <div className="insight-item">
+                <span className="insight-icon">🔧</span>
+                <span className="insight-text">
+                  <strong>Build/deployment volume:</strong> {analytics.allCounts.issueTypes['Build Issue']} build issues may indicate pipeline concerns
+                </span>
+              </div>
+            )}
           </div>
-          {analytics.topAssignees[0] && analytics.topAssignees[0].count > analytics.totalTickets * 0.4 && (
-            <div className="insight-item warning">
-              <span className="insight-icon">⚠️</span>
-              <span className="insight-text">
-                <strong>Workload concentration:</strong> {analytics.topAssignees[0].name} handles {Math.round((analytics.topAssignees[0].count / analytics.totalTickets) * 100)}% of all tickets
-              </span>
-            </div>
-          )}
-          {analytics.topApplications.length > 0 && (
-            <div className="insight-item">
-              <span className="insight-icon">💻</span>
-              <span className="insight-text">
-                <strong>Most referenced technology:</strong> {analytics.topApplications[0].name} appears in {analytics.topApplications[0].count} tickets ({Math.round((analytics.topApplications[0].count / analytics.totalTickets) * 100)}%)
-              </span>
-            </div>
-          )}
-          {analytics.allCounts.issueTypes['Build Issue'] > 20 && (
-            <div className="insight-item">
-              <span className="insight-icon">🔧</span>
-              <span className="insight-text">
-                <strong>Build/deployment volume:</strong> {analytics.allCounts.issueTypes['Build Issue']} build issues may indicate pipeline concerns
-              </span>
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* Two Column Layout */}
-      <div className="analytics-grid">
 
         {/* Request Type Breakdown - Stacked Bars */}
         <div className="analytics-section request-type-breakdown">
@@ -157,6 +156,10 @@ function ServiceDeskAnalytics({ analytics }) {
               })}
           </div>
         </div>
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="analytics-grid">
 
         {/* Workload Distribution */}
         <div className="analytics-section">

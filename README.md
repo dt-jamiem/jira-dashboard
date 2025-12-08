@@ -13,6 +13,7 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
   - Interactive tooltips showing example tickets for each sub-category
   - Color-coded segments with counts and percentages for easy comparison
   - Replaced generic "Top Applications/Technologies" with actionable request type insights
+  - **Improved Layout**: Key Insights and Request Type Breakdown now displayed side-by-side for better data comparison and space efficiency
 - **Service Desk Analytics**: Added comprehensive Service Desk Analytics component with detailed insights (last 30 days)
   - Summary cards showing total tickets, resolution rate, incidents & build issues count, and average resolution time
   - Conditional formatting highlights when average resolution time exceeds 5-day target
@@ -225,13 +226,14 @@ Comprehensive analytics dashboard providing detailed insights into service desk 
   - Resolution rate percentage (tickets resolved / tickets created)
   - Incidents & Build Issues count with percentage of total tickets
   - Average resolution time (orange warning when exceeding 5-day target)
-- **Key Insights**: Automated analysis highlighting important trends
-  - Access request dominance and volume
-  - Workload concentration warnings (assignees handling >40% of tickets)
-  - Most referenced technologies
-  - Build/deployment issue patterns
-- **Visual Analytics**: Interactive charts showing
+- **Side-by-Side Layout**: Efficient use of horizontal space with Key Insights and Request Type Breakdown displayed next to each other
+  - **Key Insights**: Automated analysis highlighting important trends
+    - Access request dominance and volume
+    - Workload concentration warnings (assignees handling >40% of tickets)
+    - Most referenced technologies
+    - Build/deployment issue patterns
   - **Request Type Breakdown**: Stacked bar chart showing top 3 sub-categories for each major request type (Access Request, Build/Deployment Issues, General IT Help) with interactive tooltips and color-coded segments
+- **Additional Visual Analytics**: Interactive charts showing
   - Workload distribution across top 5 assignees with high-load indicators
   - Priority distribution (Highest, High, Medium, Low)
   - Top 5 requesters by ticket count
