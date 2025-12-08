@@ -1297,19 +1297,19 @@ app.get('/api/service-desk-analytics', async (req, res) => {
 
     incidentAnalysis.totalIncidents = criticalIssues.length;
 
-    // Define root cause patterns
-    const rootCausePatterns = {
-      'Build Pipeline': { pattern: /\b(build|pipeline|compile|nuget|package)\b/i, tickets: [] },
-      'Deployment': { pattern: /\b(deploy|deployment|release)\b/i, tickets: [] },
-      'Database': { pattern: /\b(database|sql|db|query|table|bi refresh)\b/i, tickets: [] },
-      'Server/Infrastructure': { pattern: /\b(server|infrastructure|vm|memory|disk|cpu)\b/i, tickets: [] },
-      'Certificate': { pattern: /\b(certificate|ssl|tls|cert|expired)\b/i, tickets: [] },
-      'Performance': { pattern: /\b(slow|performance|timeout|hang|latency)\b/i, tickets: [] },
-      'Network': { pattern: /\b(network|connectivity|connection|dns)\b/i, tickets: [] },
-      'Application Error': { pattern: /\b(crash|error|exception|fail|down)\b/i, tickets: [] }
-    };
+    // Define root cause patterns in priority order (most specific first)
+    const rootCausePatterns = [
+      { name: 'Certificate', pattern: /\b(certificate|ssl|tls|cert|expired)\b/i, tickets: [] },
+      { name: 'Database', pattern: /\b(database|sql|db|query|table|bi refresh)\b/i, tickets: [] },
+      { name: 'Network', pattern: /\b(network|connectivity|connection|dns)\b/i, tickets: [] },
+      { name: 'Performance', pattern: /\b(slow|performance|timeout|hang|latency)\b/i, tickets: [] },
+      { name: 'Build Pipeline', pattern: /\b(build|pipeline|compile|nuget|package)\b/i, tickets: [] },
+      { name: 'Deployment', pattern: /\b(deploy|deployment|release)\b/i, tickets: [] },
+      { name: 'Server/Infrastructure', pattern: /\b(server|infrastructure|vm|memory|disk|cpu)\b/i, tickets: [] },
+      { name: 'Application Error', pattern: /\b(crash|error|exception|fail|down)\b/i, tickets: [] }
+    ];
 
-    // Analyze each critical issue
+    // Analyze each critical issue (assign to first matching category only)
     criticalIssues.forEach(issue => {
       const summary = (issue.fields.summary || '').toLowerCase();
       let description = '';
@@ -1322,29 +1322,30 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       }
       const fullText = `${summary} ${description}`;
 
-      // Check against each pattern
-      Object.keys(rootCausePatterns).forEach(category => {
-        if (rootCausePatterns[category].pattern.test(fullText)) {
-          rootCausePatterns[category].tickets.push({
+      // Find first matching category (most specific wins)
+      for (let i = 0; i < rootCausePatterns.length; i++) {
+        if (rootCausePatterns[i].pattern.test(fullText)) {
+          rootCausePatterns[i].tickets.push({
             key: issue.key,
             type: issue.fields.issuetype.name,
             summary: issue.fields.summary,
             status: issue.fields.status?.name || 'Unknown',
             priority: issue.fields.priority?.name || 'Unknown'
           });
+          break; // Only assign to first matching category
         }
-      });
+      }
     });
 
     // Convert to sorted array
-    incidentAnalysis.rootCauses = Object.entries(rootCausePatterns)
-      .map(([category, data]) => ({
-        category,
-        count: data.tickets.length,
+    incidentAnalysis.rootCauses = rootCausePatterns
+      .map(pattern => ({
+        category: pattern.name,
+        count: pattern.tickets.length,
         percentage: criticalIssues.length > 0
-          ? Math.round((data.tickets.length / criticalIssues.length) * 100)
+          ? Math.round((pattern.tickets.length / criticalIssues.length) * 100)
           : 0,
-        examples: data.tickets.slice(0, 3)
+        examples: pattern.tickets.slice(0, 3)
       }))
       .filter(rc => rc.count > 0)
       .sort((a, b) => b.count - a.count);

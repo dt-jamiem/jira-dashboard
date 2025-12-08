@@ -60,7 +60,7 @@ function ServiceDeskAnalytics({ analytics }) {
             </span>
           </div>
           <div className="root-causes-grid">
-            {analytics.incidentAnalysis.rootCauses.slice(0, 5).map((cause, index) => (
+            {analytics.incidentAnalysis.rootCauses.slice(0, 3).map((cause, index) => (
               <div key={index} className="root-cause-card">
                 <div className="root-cause-header">
                   <span className="root-cause-rank">#{index + 1}</span>
