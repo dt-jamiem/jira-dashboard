@@ -92,7 +92,10 @@ function ServiceDeskAnalytics({ analytics }) {
               .sort((a, b) => b[1].total - a[1].total)
               .slice(0, 3)
               .map(([requestType, data], index) => {
-                const top3SubCategories = data.subCategories.slice(0, 3);
+                // Get top 3 subcategories excluding "Other"
+                const top3SubCategories = data.subCategories
+                  .filter(sc => sc.name !== 'Other')
+                  .slice(0, 3);
                 const top3Total = top3SubCategories.reduce((sum, sc) => sum + sc.count, 0);
                 const othersCount = data.total - top3Total;
                 const colors = ['#6B9BD1', '#A9DE33', '#FFA500', '#95A5A6'];
