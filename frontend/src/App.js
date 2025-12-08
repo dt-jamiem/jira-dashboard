@@ -8,6 +8,7 @@ import TechnologyInitiatives from './components/TechnologyInitiatives';
 import ServiceDeskTrends from './components/ServiceDeskTrends';
 import DevOpsServiceDesk from './components/DevOpsServiceDesk';
 import DevOpsOpenTicketsAge from './components/DevOpsOpenTicketsAge';
+import ServiceDeskAnalytics from './components/ServiceDeskAnalytics';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -18,6 +19,7 @@ function App() {
   const [serviceDeskTrends, setServiceDeskTrends] = useState(null);
   const [devopsServiceDesk, setDevopsServiceDesk] = useState(null);
   const [devopsOpenTicketsAge, setDevopsOpenTicketsAge] = useState(null);
+  const [serviceDeskAnalytics, setServiceDeskAnalytics] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -29,13 +31,14 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [perfRes, projRes, techInitRes, serviceDeskRes, devopsRes, ageRes] = await Promise.all([
+      const [perfRes, projRes, techInitRes, serviceDeskRes, devopsRes, ageRes, analyticsRes] = await Promise.all([
         axios.get('/api/performance?days=30'),
         axios.get('/api/overview'),
         axios.get('/api/technology-initiatives'),
         axios.get('/api/service-desk-trends?days=30'),
         axios.get('/api/service-desk-trends-devops?days=30'),
-        axios.get('/api/devops-open-tickets-age?days=30')
+        axios.get('/api/devops-open-tickets-age?days=30'),
+        axios.get('/api/service-desk-analytics?days=30')
       ]);
 
       setPerformance(perfRes.data);
@@ -44,6 +47,7 @@ function App() {
       setServiceDeskTrends(serviceDeskRes.data);
       setDevopsServiceDesk(devopsRes.data);
       setDevopsOpenTicketsAge(ageRes.data);
+      setServiceDeskAnalytics(analyticsRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.error || 'Failed to fetch data from Jira');
@@ -136,6 +140,10 @@ function App() {
 
         {activeTab === 'servicedesk' && (
           <>
+            <section className="dashboard-section">
+              <ServiceDeskAnalytics analytics={serviceDeskAnalytics} />
+            </section>
+
             <section className="dashboard-section">
               <ServiceDeskTrends trends={serviceDeskTrends} />
             </section>

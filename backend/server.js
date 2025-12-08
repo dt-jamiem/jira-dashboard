@@ -986,6 +986,200 @@ app.get('/api/devops-open-tickets-age', async (req, res) => {
   }
 });
 
+// Analytics endpoint for Service Desk insights
+app.get('/api/service-desk-analytics', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
+    const dateStr = dateFrom.toISOString().split('T')[0];
+
+    console.log(`Fetching Service Desk analytics for last ${days} days (since ${dateStr})`);
+
+    let allIssues = [];
+    let nextPageToken = null;
+
+    // Fetch DTI tickets that were created OR resolved in the period, plus currently open tickets
+    // This matches the service-desk-trends endpoint logic for consistency
+    do {
+      const requestBody = {
+        jql: `Project = DTI AND "Team[Team]" IN (9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype', 'customfield_10010', 'reporter', 'assignee', 'description']
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      if (response.data.isLast || allIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`Analytics: Collected ${allIssues.length} total tickets (including older open tickets)`);
+
+    // Define period boundaries - matches service-desk-trends logic
+    const periodStartDate = new Date(dateStr);
+    const periodEndDate = new Date();
+    periodEndDate.setHours(23, 59, 59, 999);
+
+    // Analytics counters
+    const issueTypeCounts = {};
+    const requestTypeCounts = {};
+    const priorityCounts = {};
+    const reporterCounts = {};
+    const assigneeCounts = {};
+    const statusCounts = {};
+    const applicationMentions = {};
+    const applicationExamples = {}; // Store examples for each app
+
+    // Common application keywords to search for in summaries and descriptions
+    const appKeywords = [
+      'sharepoint', 'teams', 'outlook', 'excel', 'power bi', 'powerbi',
+      'azure', 'sql', 'database', 'jira', 'confluence', 'slack', 'zoom', 'vpn',
+      'active directory', 'exchange', 'onedrive', 'windows', 'macos', 'linux',
+      'tableau', 'salesforce', 'sap', 'oracle', 'aws', 'google', 'microsoft'
+    ];
+
+    // Count tickets resolved within the period and calculate resolution times
+    let totalResolvedInPeriod = 0;
+    const resolutionTimes = [];
+    allIssues.forEach(issue => {
+      if (issue.fields.resolutiondate) {
+        const resolved = new Date(issue.fields.resolutiondate);
+        const created = new Date(issue.fields.created);
+        if (resolved >= periodStartDate && resolved <= periodEndDate) {
+          totalResolvedInPeriod++;
+          const resolutionTimeHours = (resolved - created) / (1000 * 60 * 60);
+          resolutionTimes.push(resolutionTimeHours);
+        }
+      }
+    });
+
+    // Calculate average resolution time
+    const avgResolutionTimeHours = resolutionTimes.length > 0
+      ? resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length
+      : 0;
+    const avgResolutionTimeDays = avgResolutionTimeHours / 24;
+
+    // Filter to only tickets created within the period
+    const ticketsInPeriod = allIssues.filter(issue => {
+      const created = new Date(issue.fields.created);
+      return created >= periodStartDate && created <= periodEndDate;
+    });
+
+    console.log(`Analytics: Filtering to ${ticketsInPeriod.length} tickets created within the period`);
+    console.log(`Analytics: ${totalResolvedInPeriod} tickets resolved within the period`);
+
+    ticketsInPeriod.forEach(issue => {
+      // Count issue types
+      const issueType = issue.fields.issuetype?.name || 'Unknown';
+      issueTypeCounts[issueType] = (issueTypeCounts[issueType] || 0) + 1;
+
+      // Count request types
+      const requestType = issue.fields.customfield_10010?.requestType?.name || 'Unknown';
+      requestTypeCounts[requestType] = (requestTypeCounts[requestType] || 0) + 1;
+
+      // Count priorities
+      const priority = issue.fields.priority?.name || 'Unknown';
+      priorityCounts[priority] = (priorityCounts[priority] || 0) + 1;
+
+      // Count reporters
+      const reporter = issue.fields.reporter?.displayName || 'Unknown';
+      reporterCounts[reporter] = (reporterCounts[reporter] || 0) + 1;
+
+      // Count assignees
+      const assignee = issue.fields.assignee?.displayName || 'Unassigned';
+      assigneeCounts[assignee] = (assigneeCounts[assignee] || 0) + 1;
+
+      // Count statuses
+      const status = issue.fields.status?.name || 'Unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+      // Search for application mentions in summary and description
+      const summary = (issue.fields.summary || '').toLowerCase();
+      // Description might be an object or string - handle both cases
+      let description = '';
+      if (issue.fields.description) {
+        if (typeof issue.fields.description === 'string') {
+          description = issue.fields.description.toLowerCase();
+        } else if (typeof issue.fields.description === 'object' && issue.fields.description.content) {
+          // Handle Jira's Document format
+          description = JSON.stringify(issue.fields.description).toLowerCase();
+        }
+      }
+      const fullText = `${summary} ${description}`;
+
+      appKeywords.forEach(keyword => {
+        // Use word boundary regex to avoid false matches (e.g., "ad" matching "add")
+        const regex = new RegExp(`\\b${keyword.toLowerCase()}\\b`, 'i');
+        if (regex.test(fullText)) {
+          const normalizedKey = keyword.charAt(0).toUpperCase() + keyword.slice(1);
+          applicationMentions[normalizedKey] = (applicationMentions[normalizedKey] || 0) + 1;
+
+          // Store up to 3 examples per keyword
+          if (!applicationExamples[normalizedKey]) {
+            applicationExamples[normalizedKey] = [];
+          }
+          if (applicationExamples[normalizedKey].length < 3) {
+            applicationExamples[normalizedKey].push({
+              key: issue.key,
+              summary: issue.fields.summary
+            });
+          }
+        }
+      });
+    });
+
+    // Convert to sorted arrays (top 10)
+    const sortByCount = (obj) => {
+      return Object.entries(obj)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([name, count]) => ({ name, count }));
+    };
+
+    // Calculate resolution rate (matches service-desk-trends logic)
+    const resolutionRate = ticketsInPeriod.length > 0
+      ? Math.round((totalResolvedInPeriod / ticketsInPeriod.length) * 100)
+      : 0;
+
+    res.json({
+      totalTickets: ticketsInPeriod.length,
+      totalResolvedInPeriod: totalResolvedInPeriod,
+      resolutionRate: resolutionRate,
+      avgResolutionTimeHours: avgResolutionTimeHours,
+      avgResolutionTimeDays: avgResolutionTimeDays,
+      periodDays: days,
+      topIssueTypes: sortByCount(issueTypeCounts),
+      topRequestTypes: sortByCount(requestTypeCounts),
+      topPriorities: sortByCount(priorityCounts),
+      topReporters: sortByCount(reporterCounts),
+      topAssignees: sortByCount(assigneeCounts),
+      topStatuses: sortByCount(statusCounts),
+      topApplications: sortByCount(applicationMentions),
+      applicationExamples: applicationExamples,
+      allCounts: {
+        issueTypes: issueTypeCounts,
+        requestTypes: requestTypeCounts,
+        priorities: priorityCounts,
+        statuses: statusCounts
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching Service Desk analytics:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch Service Desk analytics',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Jira Dashboard API running on http://localhost:${PORT}`);
   console.log(`Connecting to Jira: ${process.env.JIRA_URL}`);
