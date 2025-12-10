@@ -5,6 +5,17 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### December 2025
+- **Enhanced Key Insights & Streamlined Analytics**: Improved Service Desk Analytics with data-driven insights and focused metrics (December 10, 2025)
+  - Redesigned Key Insights with 5 dynamic, conditional insights based on actual performance:
+    - Resolution Performance: Shows "Clearing backlog" (green) when >100% resolution rate, "Steady state" when 90-99%, or "Backlog building" (warning) when <90%
+    - Top Request Type with Sub-Category detail for immediate actionable insights
+    - Critical Issues Volume with top root cause displayed inline
+    - Workload Imbalance warning (only when concentration >40%)
+    - Resolution Speed indicator (green when ≤5 days, warning when exceeding target)
+  - Updated analytics query to use `updated >= endOfDay(-30)` for active workload tracking
+  - Tracks all tickets updated in the period (new, resolved, and in-progress work) for more accurate activity metrics
+  - Streamlined analytics page by removing Priority Distribution, Workload Distribution, and Top Requesters graphs
+  - Focused dashboard on highest-value metrics: Summary Cards, Key Insights, Request Type Breakdown, and Incident Root Cause Analysis
 - **Incident Root Cause Analysis**: Added automated root cause pattern detection for incidents and build issues (December 9, 2025)
   - Analyzes [System] Incident, [System] Problem, and Build Issue types for common patterns
   - Identifies top 5 root causes: Application Error, Build Pipeline, Deployment, Database, Certificate, Performance, Network, Server/Infrastructure
@@ -233,26 +244,26 @@ Comprehensive analytics dashboard providing detailed insights into service desk 
   - Resolution rate percentage (tickets resolved / tickets created)
   - Incidents & Build Issues count with percentage of total tickets
   - Average resolution time (orange warning when exceeding 5-day target)
+- **Key Insights**: 5 dynamic, data-driven insights with conditional logic
+  - **Resolution Performance**: Color-coded status showing if team is clearing backlog (green), at steady state, or backlog building (warning)
+  - **Top Request Type Analysis**: Dominant request type with top sub-category breakdown for immediate action
+  - **Critical Issues Volume**: Count and percentage of incidents/build issues with top root cause inline
+  - **Workload Imbalance**: Only displayed when single assignee handles >40% of tickets (red flag indicator)
+  - **Resolution Speed**: Average resolution time with performance indicator (green when meeting ≤5 day target, warning when exceeding)
+- **Request Type Breakdown**: Stacked bar chart showing top 3 sub-categories for each major request type
+  - Automated pattern detection for Access Requests (GitHub, Azure, VPN, SQL/Database, Jira, etc.)
+  - Build/Deployment Issues breakdown (Production, Sandbox, Certificates, Pipeline, etc.)
+  - General IT Help categorization (Software Install, Licensing, MS Teams, Office Apps, etc.)
+  - Interactive tooltips with example tickets and color-coded segments
 - **Incident Root Cause Analysis**: Automated pattern detection for incidents and build issues
   - Analyzes [System] Incident, [System] Problem, and Build Issue types
-  - Displays top 5 root causes with visual cards showing:
+  - Displays top 3 root causes with visual cards showing:
     - Category name with ranking badge
     - Issue count and percentage of total incidents
     - Progress bar visualization
     - Recent example tickets with keys and summaries
   - Identifies patterns: Application Error, Build Pipeline, Deployment, Database, Certificate, Performance, Network, Server/Infrastructure
   - Helps teams focus on systemic issues requiring preventive action
-- **Side-by-Side Layout**: Efficient use of horizontal space with Key Insights and Request Type Breakdown displayed next to each other
-  - **Key Insights**: Automated analysis highlighting important trends
-    - Access request dominance and volume
-    - Workload concentration warnings (assignees handling >40% of tickets)
-    - Most referenced technologies
-    - Build/deployment issue patterns
-  - **Request Type Breakdown**: Stacked bar chart showing top 3 sub-categories for each major request type (Access Request, Build/Deployment Issues, General IT Help) with interactive tooltips and color-coded segments
-- **Additional Visual Analytics**: Interactive charts showing
-  - Workload distribution across top 5 assignees with high-load indicators
-  - Priority distribution (Highest, High, Medium, Low)
-  - Top 5 requesters by ticket count
 
 #### Service Desk Trends (Combined Teams)
 Shows metrics for all configured service desk teams:

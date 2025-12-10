@@ -15,9 +15,6 @@ function ServiceDeskAnalytics({ analytics }) {
   const resolvedPercentage = analytics.resolutionRate || 0;
   const totalResolvedInPeriod = analytics.totalResolvedInPeriod || 0;
 
-  // Get max values for bar chart scaling
-  const maxAssigneeCount = Math.max(...analytics.topAssignees.map(a => a.count));
-
   return (
     <div className="service-desk-analytics">
       <h2>Service Desk Insights (Last 30 Days)</h2>
@@ -51,33 +48,69 @@ function ServiceDeskAnalytics({ analytics }) {
         <div className="insights-section-top">
           <h3>Key Insights</h3>
           <div className="insights-list">
-            <div className="insight-item">
-              <span className="insight-icon">📊</span>
-              <span className="insight-text">
-                <strong>Access requests dominate:</strong> {analytics.topRequestTypes[0].count} access requests ({Math.round((analytics.topRequestTypes[0].count / analytics.totalTickets) * 100)}% of all tickets)
-              </span>
-            </div>
-            {analytics.topAssignees[0] && analytics.topAssignees[0].count > analytics.totalTickets * 0.4 && (
+            {/* Resolution Performance Insight */}
+            {analytics.resolutionRate >= 100 ? (
+              <div className="insight-item success">
+                <span className="insight-icon">✅</span>
+                <span className="insight-text">
+                  <strong>Clearing backlog:</strong> {analytics.totalResolvedInPeriod} tickets resolved vs {analytics.totalTickets} created ({analytics.resolutionRate}% resolution rate)
+                </span>
+              </div>
+            ) : analytics.resolutionRate >= 90 ? (
+              <div className="insight-item">
+                <span className="insight-icon">📊</span>
+                <span className="insight-text">
+                  <strong>Steady state:</strong> Resolving {analytics.resolutionRate}% of created tickets (target: ≥90%)
+                </span>
+              </div>
+            ) : (
               <div className="insight-item warning">
                 <span className="insight-icon">⚠️</span>
                 <span className="insight-text">
-                  <strong>Workload concentration:</strong> {analytics.topAssignees[0].name} handles {Math.round((analytics.topAssignees[0].count / analytics.totalTickets) * 100)}% of all tickets
+                  <strong>Backlog building:</strong> Only {analytics.resolutionRate}% resolution rate ({analytics.totalResolvedInPeriod} resolved vs {analytics.totalTickets} created)
                 </span>
               </div>
             )}
-            {analytics.topApplications.length > 0 && (
+
+            {/* Top Request Type with Sub-Category Detail */}
+            {analytics.topRequestTypes[0] && analytics.requestTypeBreakdown && analytics.requestTypeBreakdown[analytics.topRequestTypes[0].name] && (
               <div className="insight-item">
-                <span className="insight-icon">💻</span>
+                <span className="insight-icon">📋</span>
                 <span className="insight-text">
-                  <strong>Most referenced technology:</strong> {analytics.topApplications[0].name} appears in {analytics.topApplications[0].count} tickets ({Math.round((analytics.topApplications[0].count / analytics.totalTickets) * 100)}%)
+                  <strong>{analytics.topRequestTypes[0].name}s dominate:</strong> {analytics.topRequestTypes[0].count} tickets ({Math.round((analytics.topRequestTypes[0].count / analytics.totalTickets) * 100)}%),
+                  top sub-category: {analytics.requestTypeBreakdown[analytics.topRequestTypes[0].name].subCategories[0]?.name} ({analytics.requestTypeBreakdown[analytics.topRequestTypes[0].name].subCategories[0]?.count})
                 </span>
               </div>
             )}
-            {analytics.allCounts.issueTypes['Build Issue'] > 20 && (
+
+            {/* Critical Issues Volume */}
+            {analytics.incidentAnalysis && analytics.incidentAnalysis.totalIncidents > 0 && (
               <div className="insight-item">
-                <span className="insight-icon">🔧</span>
+                <span className="insight-icon">🚨</span>
                 <span className="insight-text">
-                  <strong>Build/deployment volume:</strong> {analytics.allCounts.issueTypes['Build Issue']} build issues may indicate pipeline concerns
+                  <strong>Critical issues:</strong> {analytics.incidentAnalysis.totalIncidents} incidents/build issues ({Math.round((analytics.incidentAnalysis.totalIncidents / analytics.totalTickets) * 100)}% of tickets)
+                  {analytics.incidentAnalysis.rootCauses[0] && `, top cause: ${analytics.incidentAnalysis.rootCauses[0].category} (${analytics.incidentAnalysis.rootCauses[0].count})`}
+                </span>
+              </div>
+            )}
+
+            {/* Workload Concentration Warning */}
+            {analytics.topAssignees[0] && analytics.topAssignees[0].count > analytics.totalTickets * 0.4 && (
+              <div className="insight-item warning">
+                <span className="insight-icon">⚖️</span>
+                <span className="insight-text">
+                  <strong>Workload imbalance:</strong> {analytics.topAssignees[0].name} handles {Math.round((analytics.topAssignees[0].count / analytics.totalTickets) * 100)}% of tickets ({analytics.topAssignees[0].count} of {analytics.totalTickets})
+                </span>
+              </div>
+            )}
+
+            {/* Average Resolution Time Performance */}
+            {analytics.avgResolutionTimeDays > 0 && (
+              <div className={`insight-item ${analytics.avgResolutionTimeDays > 5 ? 'warning' : 'success'}`}>
+                <span className="insight-icon">{analytics.avgResolutionTimeDays > 5 ? '⏱️' : '⚡'}</span>
+                <span className="insight-text">
+                  <strong>Resolution speed:</strong> {analytics.avgResolutionTimeDays.toFixed(1)} day average
+                  {analytics.avgResolutionTimeDays <= 5 ? ' - meeting target!' : ' - exceeds 5-day target'}
                 </span>
               </div>
             )}
@@ -210,69 +243,6 @@ function ServiceDeskAnalytics({ analytics }) {
         </div>
       )}
 
-      {/* Two Column Layout */}
-      <div className="analytics-grid">
-
-        {/* Workload Distribution */}
-        <div className="analytics-section">
-          <h3>Workload Distribution</h3>
-          <div className="bar-chart">
-            {analytics.topAssignees.slice(0, 5).map((assignee, index) => {
-              const percentage = Math.round((assignee.count / analytics.totalTickets) * 100);
-              const isHighLoad = percentage > 40;
-              return (
-                <div key={index} className="bar-item">
-                  <div className="bar-label">{assignee.name}</div>
-                  <div className="bar-container">
-                    <div
-                      className={`bar-fill workload ${isHighLoad ? 'high-load' : ''}`}
-                      style={{ width: `${(assignee.count / maxAssigneeCount) * 100}%` }}
-                    />
-                    <div className="bar-value">{assignee.count} ({percentage}%)</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Priority Distribution */}
-        <div className="analytics-section">
-          <h3>Priority Distribution</h3>
-          <div className="priority-grid">
-            {analytics.topPriorities.map((priority, index) => {
-              const percentage = Math.round((priority.count / analytics.totalTickets) * 100);
-              let priorityClass = 'priority-low';
-              if (priority.name === 'Highest') priorityClass = 'priority-highest';
-              else if (priority.name === 'High') priorityClass = 'priority-high';
-              else if (priority.name === 'Medium') priorityClass = 'priority-medium';
-
-              return (
-                <div key={index} className={`priority-card ${priorityClass}`}>
-                  <div className="priority-name">{priority.name}</div>
-                  <div className="priority-count">{priority.count}</div>
-                  <div className="priority-percentage">{percentage}%</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Top Reporters */}
-        <div className="analytics-section">
-          <h3>Top Requesters</h3>
-          <div className="simple-list">
-            {analytics.topReporters.slice(0, 5).map((reporter, index) => (
-              <div key={index} className="list-item">
-                <span className="list-rank">{index + 1}</span>
-                <span className="list-name">{reporter.name}</span>
-                <span className="list-count">{reporter.count} tickets</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
     </div>
   );
 }

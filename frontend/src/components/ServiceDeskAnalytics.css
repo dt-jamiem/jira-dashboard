@@ -19,6 +19,15 @@
   font-weight: 600;
 }
 
+.section-subtitle {
+  font-size: 0.85rem;
+  font-family: 'Calibri', sans-serif;
+  color: #6B778C;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
 /* Summary Cards */
 .analytics-summary {
   display: grid;
@@ -437,6 +446,11 @@
 .insight-item.warning {
   background-color: #FFF3E0;
   border-left-color: #FFA500;
+}
+
+.insight-item.success {
+  background-color: #E8F5E9;
+  border-left-color: #4CAF50;
 }
 
 .insight-icon {

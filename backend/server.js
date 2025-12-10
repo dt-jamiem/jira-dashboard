@@ -999,12 +999,12 @@ app.get('/api/service-desk-analytics', async (req, res) => {
     let allIssues = [];
     let nextPageToken = null;
 
-    // Fetch DTI tickets that were created OR resolved in the period, plus currently open tickets
-    // This matches the service-desk-trends endpoint logic for consistency
+    // Fetch DTI tickets that have been updated in the period (shows active workload)
+    // This includes new, resolved, and in-progress tickets that have been touched
     do {
       const requestBody = {
-        jql: `Project = DTI AND "Team[Team]" IN (9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
-        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype', 'customfield_10010', 'reporter', 'assignee', 'description']
+        jql: `Project = DTI AND "Team[Team]" IN (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, 9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72) AND updated >= endOfDay(-${days}) ORDER BY updated DESC`,
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype', 'customfield_10010', 'reporter', 'assignee', 'description', 'updated']
       };
 
       if (nextPageToken) {
@@ -1066,16 +1066,30 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       : 0;
     const avgResolutionTimeDays = avgResolutionTimeHours / 24;
 
-    // Filter to only tickets created within the period
-    const ticketsInPeriod = allIssues.filter(issue => {
+    // All fetched tickets are already filtered by updated date via JQL
+    // For certain metrics (like creation-based ones), we filter to tickets created in period
+    const ticketsCreatedInPeriod = allIssues.filter(issue => {
       const created = new Date(issue.fields.created);
       return created >= periodStartDate && created <= periodEndDate;
     });
 
-    console.log(`Analytics: Filtering to ${ticketsInPeriod.length} tickets created within the period`);
+    console.log(`Analytics: Total ${allIssues.length} tickets updated in the period`);
+    console.log(`Analytics: ${ticketsCreatedInPeriod.length} tickets created within the period`);
     console.log(`Analytics: ${totalResolvedInPeriod} tickets resolved within the period`);
 
-    ticketsInPeriod.forEach(issue => {
+    // For workload distribution and other activity-based metrics, use all updated tickets
+    allIssues.forEach(issue => {
+      // Count assignees (active workload - anyone who worked on a ticket)
+      const assignee = issue.fields.assignee?.displayName || 'Unassigned';
+      assigneeCounts[assignee] = (assigneeCounts[assignee] || 0) + 1;
+
+      // Count statuses
+      const status = issue.fields.status?.name || 'Unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    // For creation-based metrics, use only tickets created in the period
+    ticketsCreatedInPeriod.forEach(issue => {
       // Count issue types
       const issueType = issue.fields.issuetype?.name || 'Unknown';
       issueTypeCounts[issueType] = (issueTypeCounts[issueType] || 0) + 1;
@@ -1091,14 +1105,6 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       // Count reporters
       const reporter = issue.fields.reporter?.displayName || 'Unknown';
       reporterCounts[reporter] = (reporterCounts[reporter] || 0) + 1;
-
-      // Count assignees
-      const assignee = issue.fields.assignee?.displayName || 'Unassigned';
-      assigneeCounts[assignee] = (assigneeCounts[assignee] || 0) + 1;
-
-      // Count statuses
-      const status = issue.fields.status?.name || 'Unknown';
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
 
       // Search for application mentions in summary and description
       const summary = (issue.fields.summary || '').toLowerCase();
@@ -1144,8 +1150,8 @@ app.get('/api/service-desk-analytics', async (req, res) => {
     };
 
     // Calculate resolution rate (matches service-desk-trends logic)
-    const resolutionRate = ticketsInPeriod.length > 0
-      ? Math.round((totalResolvedInPeriod / ticketsInPeriod.length) * 100)
+    const resolutionRate = ticketsCreatedInPeriod.length > 0
+      ? Math.round((totalResolvedInPeriod / ticketsCreatedInPeriod.length) * 100)
       : 0;
 
     // Analyze sub-categories within each top request type
@@ -1204,7 +1210,7 @@ app.get('/api/service-desk-analytics', async (req, res) => {
     };
 
     // Group tickets by request type and analyze
-    ticketsInPeriod.forEach(issue => {
+    ticketsCreatedInPeriod.forEach(issue => {
       const requestType = issue.fields.customfield_10010?.requestType?.name;
       if (!requestType || !requestTypeKeywords[requestType]) return;
 
@@ -1287,8 +1293,8 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       rootCauses: []
     };
 
-    // Filter for incidents, problems, and build issues
-    const criticalIssues = ticketsInPeriod.filter(issue => {
+    // Filter for incidents, problems, and build issues (from created tickets)
+    const criticalIssues = ticketsCreatedInPeriod.filter(issue => {
       const issueType = issue.fields.issuetype?.name || '';
       return issueType === '[System] Incident' ||
              issueType === '[System] Problem' ||
@@ -1351,7 +1357,7 @@ app.get('/api/service-desk-analytics', async (req, res) => {
       .sort((a, b) => b.count - a.count);
 
     res.json({
-      totalTickets: ticketsInPeriod.length,
+      totalTickets: ticketsCreatedInPeriod.length,
       totalResolvedInPeriod: totalResolvedInPeriod,
       resolutionRate: resolutionRate,
       avgResolutionTimeHours: avgResolutionTimeHours,
