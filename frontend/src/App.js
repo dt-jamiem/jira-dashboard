@@ -117,22 +117,16 @@ function App() {
         )}
 
         {activeTab === 'trends' && (
-          <>
-            <section className="dashboard-section-half">
-              <ServiceDeskTrends trends={serviceDeskTrends} />
-            </section>
-
-            <section className="dashboard-section dashboard-section-split">
-              <div className="split-container">
-                <div className="split-item">
-                  <DevOpsServiceDesk trends={devopsServiceDesk} />
-                </div>
-                <div className="split-item">
-                  <DevOpsOpenTicketsAge ageData={devopsOpenTicketsAge} />
-                </div>
+          <section className="dashboard-section dashboard-section-split">
+            <div className="split-container">
+              <div className="split-item">
+                <ServiceDeskTrends trends={serviceDeskTrends} />
               </div>
-            </section>
-          </>
+              <div className="split-item">
+                <DevOpsOpenTicketsAge ageData={devopsOpenTicketsAge} />
+              </div>
+            </div>
+          </section>
         )}
       </main>
     </div>

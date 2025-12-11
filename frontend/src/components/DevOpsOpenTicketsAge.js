@@ -18,21 +18,40 @@ function DevOpsOpenTicketsAge({ ageData }) {
 
   // Calculate chart dimensions and scale
   const chartWidth = 800;
-  const chartHeight = 200;
+  const chartHeight = 300;
   const padding = { top: 20, right: 20, bottom: 40, left: 50 };
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
-  // Find max value for scaling
+  // Find max and min values for scaling
   const maxAvgAge = Math.max(...displayData.map(d => d.avgAge || 0), 1);
-  const yScale = maxAvgAge > 0 ? innerHeight / maxAvgAge : 1;
+  const minAvgAge = Math.min(...displayData.map(d => d.avgAge || 0));
+
+  // Calculate Y-axis range with a floor to make differences more visible
+  // Set floor to 80% of minimum value, rounded down to nearest 10 (or 0 if minimum is very small)
+  const yMin = minAvgAge > 20 ? Math.floor((minAvgAge * 0.8) / 10) * 10 : 0;
+  const yMax = maxAvgAge;
+  const yRange = yMax - yMin;
+  const yScale = yRange > 0 ? innerHeight / yRange : 1;
   const xScale = innerWidth / (displayData.length - 1 || 1);
+
+  // Calculate insights metrics
+  const firstDataPoint = displayData[0]?.avgAge || 0;
+  const lastDataPoint = displayData[displayData.length - 1]?.avgAge || 0;
+  const delta = lastDataPoint - firstDataPoint;
+  const deltaPercent = firstDataPoint > 0 ? ((delta / firstDataPoint) * 100).toFixed(1) : 0;
+
+  // Find dates for peak and lowest values
+  const maxDay = displayData.find(d => d.avgAge === maxAvgAge);
+  const minDay = displayData.find(d => d.avgAge === minAvgAge);
+  const maxDate = maxDay ? new Date(maxDay.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  const minDate = minDay ? new Date(minDay.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
 
   // Generate line path for average age
   const linePath = displayData
     .map((day, index) => {
       const x = padding.left + (index * xScale);
-      const y = padding.top + (innerHeight - (day.avgAge || 0) * yScale);
+      const y = padding.top + (innerHeight - ((day.avgAge || 0) - yMin) * yScale);
       return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
     })
     .join(' ');
@@ -45,20 +64,33 @@ function DevOpsOpenTicketsAge({ ageData }) {
       <h2>DevOps Open Tickets - Average Age Trend</h2>
       <p className="subtitle">Project DTI - DevOps Team - Last {periodDays} days</p>
 
-      {/* Current Metrics */}
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-label">Current Average Age</div>
-          <div className="metric-value">{currentMetrics.avgAge} days</div>
-          <div className="metric-subtext">of open tickets</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Total Open Tickets</div>
-          <div className="metric-value">{currentMetrics.totalOpen}</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Oldest Ticket Age</div>
-          <div className="metric-value">{currentMetrics.oldestTicketAge} days</div>
+      {/* Key Insights */}
+      <div className="insights-section">
+        <h3>Key Insights</h3>
+        <div className="insights-list">
+          {/* Peak Average Age */}
+          <div className="insight-item">
+            <span className="insight-icon">📈</span>
+            <span className="insight-text">
+              <strong>Peak average age:</strong> {maxAvgAge.toFixed(1)} days on {maxDate}
+            </span>
+          </div>
+
+          {/* Lowest Average Age */}
+          <div className="insight-item">
+            <span className="insight-icon">📉</span>
+            <span className="insight-text">
+              <strong>Lowest average age:</strong> {minAvgAge.toFixed(1)} days on {minDate}
+            </span>
+          </div>
+
+          {/* Delta over period */}
+          <div className={`insight-item ${delta > 0 ? 'warning' : delta < 0 ? 'success' : ''}`}>
+            <span className="insight-icon">{delta > 0 ? '⬆️' : delta < 0 ? '⬇️' : '➡️'}</span>
+            <span className="insight-text">
+              <strong>Period trend:</strong> {delta > 0 ? 'Increased' : delta < 0 ? 'Decreased' : 'No change'} by {Math.abs(delta).toFixed(1)} days ({delta > 0 ? '+' : ''}{deltaPercent}%) from start to end of period
+            </span>
+          </div>
         </div>
       </div>
 
@@ -69,7 +101,7 @@ function DevOpsOpenTicketsAge({ ageData }) {
           {/* Y-axis grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
             const y = padding.top + innerHeight * (1 - ratio);
-            const value = Math.round(maxAvgAge * ratio * 10) / 10;
+            const value = (yMin + (yRange * ratio)).toFixed(1);
             return (
               <g key={i}>
                 <line
@@ -84,7 +116,8 @@ function DevOpsOpenTicketsAge({ ageData }) {
                   x={padding.left - 10}
                   y={y + 4}
                   textAnchor="end"
-                  fontSize="12"
+                  fontSize="16"
+                  fontWeight={ratio === 0 || ratio === 1 ? "700" : "400"}
                   fill="#6B778C"
                 >
                   {value}
@@ -110,7 +143,7 @@ function DevOpsOpenTicketsAge({ ageData }) {
           {/* Data points */}
           {displayData.map((day, index) => {
             const x = padding.left + (index * xScale);
-            const y = padding.top + (innerHeight - (day.avgAge || 0) * yScale);
+            const y = padding.top + (innerHeight - ((day.avgAge || 0) - yMin) * yScale);
             return (
               <circle
                 key={index}
@@ -135,7 +168,7 @@ function DevOpsOpenTicketsAge({ ageData }) {
                   x={x}
                   y={padding.top + innerHeight + 20}
                   textAnchor="middle"
-                  fontSize="11"
+                  fontSize="16"
                   fill="#6B778C"
                 >
                   {date.getDate()}/{date.getMonth() + 1}
