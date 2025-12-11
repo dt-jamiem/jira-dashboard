@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 import ServiceDeskTrends from './components/ServiceDeskTrends';
+import ServiceDeskAgeTrend from './components/ServiceDeskAgeTrend';
 import DevOpsServiceDesk from './components/DevOpsServiceDesk';
 import DevOpsOpenTicketsAge from './components/DevOpsOpenTicketsAge';
 import ServiceDeskAnalytics from './components/ServiceDeskAnalytics';
@@ -11,6 +12,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serviceDeskTrends, setServiceDeskTrends] = useState(null);
+  const [serviceDeskAgeTrend, setServiceDeskAgeTrend] = useState(null);
   const [devopsServiceDesk, setDevopsServiceDesk] = useState(null);
   const [devopsOpenTicketsAge, setDevopsOpenTicketsAge] = useState(null);
   const [serviceDeskAnalytics, setServiceDeskAnalytics] = useState(null);
@@ -26,8 +28,9 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [serviceDeskRes, devopsRes, ageRes, analyticsRes, devopsAnalyticsRes] = await Promise.all([
+      const [serviceDeskRes, serviceDeskAgeRes, devopsRes, ageRes, analyticsRes, devopsAnalyticsRes] = await Promise.all([
         axios.get('/api/service-desk-trends?days=30'),
+        axios.get('/api/service-desk-age-trends?days=30'),
         axios.get('/api/service-desk-trends-devops?days=30'),
         axios.get('/api/devops-open-tickets-age?days=30'),
         axios.get('/api/service-desk-analytics?days=30'),
@@ -35,6 +38,7 @@ function App() {
       ]);
 
       setServiceDeskTrends(serviceDeskRes.data);
+      setServiceDeskAgeTrend(serviceDeskAgeRes.data);
       setDevopsServiceDesk(devopsRes.data);
       setDevopsOpenTicketsAge(ageRes.data);
       setServiceDeskAnalytics(analyticsRes.data);
@@ -117,16 +121,26 @@ function App() {
         )}
 
         {activeTab === 'trends' && (
-          <section className="dashboard-section dashboard-section-split">
-            <div className="split-container">
-              <div className="split-item">
-                <ServiceDeskTrends trends={serviceDeskTrends} />
+          <>
+            <section className="dashboard-section dashboard-section-split">
+              <div className="split-container">
+                <div className="split-item">
+                  <ServiceDeskTrends trends={serviceDeskTrends} />
+                </div>
+                <div className="split-item">
+                  <ServiceDeskAgeTrend ageData={serviceDeskAgeTrend} />
+                </div>
               </div>
-              <div className="split-item">
-                <DevOpsOpenTicketsAge ageData={devopsOpenTicketsAge} />
+            </section>
+
+            <section className="dashboard-section dashboard-section-split">
+              <div className="split-container">
+                <div className="split-item">
+                  <DevOpsOpenTicketsAge ageData={devopsOpenTicketsAge} />
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          </>
         )}
       </main>
     </div>

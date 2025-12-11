@@ -701,6 +701,136 @@ app.get('/api/service-desk-trends', async (req, res) => {
   }
 });
 
+// Get Service Desk average age trends
+app.get('/api/service-desk-age-trends', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 90;
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
+    const dateStr = dateFrom.toISOString().split('T')[0];
+
+    let allIssues = [];
+    let nextPageToken = null;
+
+    // Fetch DTI tickets that were created OR resolved in the period, plus currently open tickets
+    // This ensures we have all data needed for accurate metrics
+    do {
+      const requestBody = {
+        jql: `Project = DTI AND "Team[Team]" IN (9888ca76-8551-47b3-813f-4bf5df9e9762, a092fa48-f541-4358-90b8-ba6caccceb72, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND (created >= "${dateStr}" OR resolutiondate >= "${dateStr}" OR statusCategory != Done) ORDER BY created DESC`,
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'priority', 'issuetype', 'customfield_10010']
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      console.log(`Fetched ${response.data.issues?.length || 0} service desk age issues, total so far: ${allIssues.length}, isLast: ${response.data.isLast}`);
+
+      if (response.data.isLast || allIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`Service Desk Age Trends: Collected ${allIssues.length} total issues (including older open tickets)`);
+
+    // Generate date range for the trend window
+    const trendStartDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const trendData = [];
+    const currentDate = new Date(trendStartDate);
+
+    while (currentDate <= today) {
+      const dayOfWeek = currentDate.getDay();
+
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+      }
+
+      const dateKey = currentDate.toISOString().split('T')[0];
+      const endOfDay = new Date(currentDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Find tickets that were open on this date
+      const openOnThisDate = allIssues.filter(issue => {
+        const createdDate = new Date(issue.fields.created);
+        const isCreatedByThisDate = createdDate <= endOfDay;
+
+        if (!isCreatedByThisDate) return false;
+
+        if (!issue.fields.resolutiondate) {
+          return true; // Not resolved, so it's open
+        }
+
+        const resolvedDate = new Date(issue.fields.resolutiondate);
+        return resolvedDate > endOfDay; // Resolved after this date, so it was open on this date
+      });
+
+      // Calculate average age for open tickets on this date
+      let totalAge = 0;
+      openOnThisDate.forEach(issue => {
+        const createdDate = new Date(issue.fields.created);
+        const ageDays = (endOfDay - createdDate) / (1000 * 60 * 60 * 24);
+        totalAge += ageDays;
+      });
+
+      const avgAge = openOnThisDate.length > 0
+        ? Math.round((totalAge / openOnThisDate.length) * 10) / 10
+        : 0;
+
+      trendData.push({
+        date: dateKey,
+        avgAge: avgAge,
+        openCount: openOnThisDate.length
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate current metrics
+    const currentOpenIssues = allIssues.filter(issue => !issue.fields.resolutiondate);
+    let currentTotalAge = 0;
+    let oldestTicketAge = 0;
+
+    currentOpenIssues.forEach(issue => {
+      const createdDate = new Date(issue.fields.created);
+      const ageDays = (today - createdDate) / (1000 * 60 * 60 * 24);
+      currentTotalAge += ageDays;
+      if (ageDays > oldestTicketAge) {
+        oldestTicketAge = ageDays;
+      }
+    });
+
+    const currentAvgAge = currentOpenIssues.length > 0
+      ? Math.round((currentTotalAge / currentOpenIssues.length) * 10) / 10
+      : 0;
+
+    res.json({
+      trendData,
+      currentMetrics: {
+        avgAge: currentAvgAge,
+        totalOpen: currentOpenIssues.length,
+        oldestTicketAge: Math.round(oldestTicketAge)
+      },
+      periodDays: days
+    });
+  } catch (error) {
+    console.error('Error fetching service desk age trends:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch service desk age trends',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 // Get DevOps-specific service desk trends
 app.get('/api/service-desk-trends-devops', async (req, res) => {
   try {
