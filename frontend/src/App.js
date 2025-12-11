@@ -118,7 +118,7 @@ function App() {
 
         {activeTab === 'trends' && (
           <>
-            <section className="dashboard-section">
+            <section className="dashboard-section-half">
               <ServiceDeskTrends trends={serviceDeskTrends} />
             </section>
 

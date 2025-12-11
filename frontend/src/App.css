@@ -100,6 +100,16 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.dashboard-section-half {
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 50%;
+  max-width: 700px;
+}
+
 .loading,
 .error {
   display: flex;
