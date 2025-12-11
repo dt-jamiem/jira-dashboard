@@ -95,25 +95,31 @@ function App() {
         >
           DevOps
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'trends' ? 'active' : ''}`}
+          onClick={() => setActiveTab('trends')}
+        >
+          Trends
+        </button>
       </nav>
 
       <main className="dashboard-container">
         {activeTab === 'servicedesk' && (
-          <>
-            <section className="dashboard-section">
-              <ServiceDeskAnalytics analytics={serviceDeskAnalytics} />
-            </section>
-
-            <section className="dashboard-section">
-              <ServiceDeskTrends trends={serviceDeskTrends} />
-            </section>
-          </>
+          <section className="dashboard-section">
+            <ServiceDeskAnalytics analytics={serviceDeskAnalytics} />
+          </section>
         )}
 
         {activeTab === 'devops' && (
+          <section className="dashboard-section">
+            <DevOpsAnalytics analytics={devopsAnalytics} />
+          </section>
+        )}
+
+        {activeTab === 'trends' && (
           <>
             <section className="dashboard-section">
-              <DevOpsAnalytics analytics={devopsAnalytics} />
+              <ServiceDeskTrends trends={serviceDeskTrends} />
             </section>
 
             <section className="dashboard-section dashboard-section-split">
