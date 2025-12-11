@@ -60,17 +60,6 @@ function ServiceDeskTrends({ trends }) {
       <h2>Service Desk Trends</h2>
       <p className="subtitle">Project DTI - Last {periodDays} days</p>
 
-      {/* Resolution Metrics */}
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-label">Resolution Rate</div>
-          <div className={`metric-value ${getResolutionRateStatus(resolutionMetrics.resolutionRate)}`}>
-            {resolutionMetrics.resolutionRate}%
-          </div>
-          <div className="metric-subtext">Target: ≥ {RESOLUTION_RATE_TARGET}%</div>
-        </div>
-      </div>
-
       {/* Open Tickets Trend */}
       <div className="volume-section">
         <h3>Open Tickets Trend (Last 30 Days)</h3>
