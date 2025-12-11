@@ -38,13 +38,19 @@ function ServiceDeskTrends({ trends }) {
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
-  // Find max value for scaling
+  // Find max and min values for scaling
   const maxOpenTickets = Math.max(...recentData.map(d => d.openTickets || 0));
-  const yScale = maxOpenTickets > 0 ? innerHeight / maxOpenTickets : 1;
+  const minOpenTickets = Math.min(...recentData.map(d => d.openTickets || 0));
+
+  // Calculate Y-axis range with a floor to make differences more visible
+  // Set floor to 85% of minimum value (or 0 if minimum is very small)
+  const yMin = minOpenTickets > 20 ? Math.floor(minOpenTickets * 0.85) : 0;
+  const yMax = maxOpenTickets;
+  const yRange = yMax - yMin;
+  const yScale = yRange > 0 ? innerHeight / yRange : 1;
   const xScale = innerWidth / (recentData.length - 1 || 1);
 
   // Calculate insights metrics
-  const minOpenTickets = Math.min(...recentData.map(d => d.openTickets || 0));
   const firstDataPoint = recentData[0]?.openTickets || 0;
   const lastDataPoint = recentData[recentData.length - 1]?.openTickets || 0;
   const delta = lastDataPoint - firstDataPoint;
@@ -54,7 +60,7 @@ function ServiceDeskTrends({ trends }) {
   const linePath = recentData
     .map((day, index) => {
       const x = padding.left + (index * xScale);
-      const y = padding.top + (innerHeight - (day.openTickets || 0) * yScale);
+      const y = padding.top + (innerHeight - ((day.openTickets || 0) - yMin) * yScale);
       return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
     })
     .join(' ');
@@ -104,7 +110,7 @@ function ServiceDeskTrends({ trends }) {
           {/* Y-axis grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
             const y = padding.top + innerHeight * (1 - ratio);
-            const value = Math.round(maxOpenTickets * ratio);
+            const value = Math.round(yMin + (yRange * ratio));
             return (
               <g key={i}>
                 <line
