@@ -622,6 +622,14 @@ app.get('/api/service-desk-trends', async (req, res) => {
     const currentDate = new Date(trendStartDate);
 
     while (currentDate <= today) {
+      const dayOfWeek = currentDate.getDay();
+
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+      }
+
       const dateKey = currentDate.toISOString().split('T')[0];
       const endOfDay = new Date(currentDate);
       endOfDay.setHours(23, 59, 59, 999);
@@ -799,6 +807,14 @@ app.get('/api/service-desk-trends-devops', async (req, res) => {
     const currentDate = new Date(trendStartDate);
 
     while (currentDate <= today) {
+      const dayOfWeek = currentDate.getDay();
+
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+      }
+
       const dateKey = currentDate.toISOString().split('T')[0];
       const endOfDay = new Date(currentDate);
       endOfDay.setHours(23, 59, 59, 999);
