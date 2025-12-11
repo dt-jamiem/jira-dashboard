@@ -41,15 +41,15 @@ function DevOpsAnalytics({ analytics }) {
           <div className="summary-label">Resolution Rate</div>
           <div className="summary-subtext">{resolutionMetrics.totalResolved || 0} resolved</div>
         </div>
-        <div className={`summary-card ${resolutionMetrics.avgResolutionTimeDays <= RESOLUTION_TIME_TARGET ? 'success' : 'warning'}`}>
-          <div className="summary-value">{resolutionMetrics.avgResolutionTimeDays || 0}</div>
-          <div className="summary-label">Avg Resolution Time</div>
-          <div className="summary-subtext">days (target: ≤{RESOLUTION_TIME_TARGET})</div>
-        </div>
         <div className="summary-card">
           <div className="summary-value">{currentMetrics.totalOpen || 0}</div>
           <div className="summary-label">Open Tickets</div>
           <div className="summary-subtext">avg age: {currentMetrics.avgAge || 0} days</div>
+        </div>
+        <div className={`summary-card ${resolutionMetrics.avgResolutionTimeDays <= RESOLUTION_TIME_TARGET ? 'success' : 'warning'}`}>
+          <div className="summary-value">{resolutionMetrics.avgResolutionTimeDays || 0}</div>
+          <div className="summary-label">Avg Resolution Time</div>
+          <div className="summary-subtext">days (target: ≤{RESOLUTION_TIME_TARGET})</div>
         </div>
       </div>
 
