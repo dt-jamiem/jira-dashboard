@@ -5,6 +5,16 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### December 2025
+- **DevOps Analytics Dashboard**: Added comprehensive DevOps insights with 4 summary tiles and key performance indicators (December 11, 2025)
+  - Summary tiles: Total Requests, Resolution Rate, Avg Resolution Time, and Open Tickets with average age
+  - Dynamic insights showing resolution performance, speed indicators, and aging ticket alerts
+  - Conditional formatting with green for meeting targets (≤5 days resolution, ≥90% resolution rate)
+  - Integrated with existing DevOps trends and open tickets age visualizations
+- **Simplified Navigation**: Streamlined dashboard to focus on Service Desk and DevOps operations (December 11, 2025)
+  - Removed Overview tab to reduce complexity
+  - Service Desk tab now loads by default
+  - Two-tab structure: Service Desk (default) and DevOps
+  - Optimized API calls to only fetch required data
 - **Enhanced Key Insights & Streamlined Analytics**: Improved Service Desk Analytics with data-driven insights and focused metrics (December 10, 2025)
   - Redesigned Key Insights with 5 dynamic, conditional insights based on actual performance:
     - Resolution Performance: Shows "Clearing backlog" (green) when >100% resolution rate, "Steady state" when 90-99%, or "Backlog building" (warning) when <90%
@@ -66,38 +76,28 @@ This filtering is applied across all dashboard sections and metrics.
 
 ## Features
 
-The dashboard is organized into three main tabs:
+The dashboard is organized into two main tabs:
 
-### Overview Tab
-- **Project Overview**: View filtered projects with issue counts and project leads
-- **Service Desk Resolution Metrics**: Key performance metrics for service desk operations (last 30 days)
-  - Average Resolution Time for all tickets (with conditional formatting)
-  - Incident Resolution Time for critical issue types ([System] Incident, [System] Problem, Build Issue)
-  - Total Created and Resolved ticket counts
-  - Resolution Rate percentage
-  - Separate metrics shown for Combined Teams (DTI) and DevOps Team
-- **Team Performance Metrics**: Track cycle time, lead time, throughput, and other key metrics
-
-### Initiatives Tab
-- **Technology Initiatives**: Track progress of technology-related initiatives with custom fields and completion percentages
-
-### Service Desk Tab
+### Service Desk Tab (Default)
 - **Service Desk Analytics**: Comprehensive analytics dashboard showing detailed service desk insights (last 30 days)
-  - Summary cards with key metrics: total tickets, resolution rate, incidents & build issues, and average resolution time
+  - 4 Summary cards: Total Requests, Resolution Rate, Incidents & Build Issues, and Average Resolution Time
   - Conditional formatting highlights average resolution time exceeding 5-day target in orange
-  - Key insights section with automated analysis identifying trends in access requests, workload concentration, and technology patterns
-  - Visual analytics charts showing:
-    - Top request types (bar chart)
-    - Top applications/technologies (bar chart)
-    - Workload distribution across assignees with high-load warnings (>40% concentration)
-    - Priority distribution (color-coded cards)
-    - Top requesters (ranked list)
+  - Key insights section with 5 dynamic, data-driven insights based on actual performance
+  - Request Type Breakdown with stacked bar charts showing top 3 sub-categories
+  - Incident Root Cause Analysis identifying patterns and systemic issues
 - **Service Desk Trends**: Combined view of service desk tickets across multiple teams with resolution metrics and 30-day trend graphs
   - Conditional formatting highlights metrics performance against targets (green for good, red for needs improvement)
   - Average resolution time target: ≤ 5 days
   - Resolution rate target: ≥ 90%
-- **DevOps Service Desk**: Dedicated view for DevOps team service desk tickets with the same metrics and visualizations
-  - Same conditional formatting and targets as Combined View
+
+### DevOps Tab
+- **DevOps Analytics**: Comprehensive DevOps insights dashboard (last 30 days)
+  - 4 Summary tiles: Total Requests, Resolution Rate, Average Resolution Time, and Open Tickets with average age
+  - Conditional formatting with green for meeting targets (≤5 days resolution, ≥90% resolution rate)
+  - Key insights showing resolution performance, speed indicators, and aging ticket alerts
+  - Dynamic analysis identifying backlog trends and tickets requiring attention
+- **DevOps Service Desk Trends**: Dedicated view for DevOps team service desk tickets with metrics and 30-day trend graphs
+  - Same conditional formatting and targets as Service Desk tab
 - **DevOps Open Tickets Age Trend**: Tracks the average age of open DevOps tickets over time with current metrics and 30-day trend visualization
 
 ## Prerequisites
@@ -120,16 +120,12 @@ jira-dashboard/
     │   └── index.html
     ├── src/
     │   ├── components/
-    │   │   ├── ProjectOverview.js
-    │   │   ├── IssueStatistics.js
-    │   │   ├── TeamPerformance.js
-    │   │   ├── TechnologyInitiatives.js
-    │   │   ├── ServiceDeskMetrics.js
-    │   │   ├── ServiceDeskMetrics.css
     │   │   ├── ServiceDeskAnalytics.js
     │   │   ├── ServiceDeskAnalytics.css
     │   │   ├── ServiceDeskTrends.js
     │   │   ├── ServiceDeskTrends.css
+    │   │   ├── DevOpsAnalytics.js
+    │   │   ├── DevOpsAnalytics.css
     │   │   ├── DevOpsServiceDesk.js
     │   │   └── DevOpsOpenTicketsAge.js
     │   ├── App.js
@@ -184,58 +180,15 @@ The frontend will run on http://localhost:3000 and automatically open in your br
 The backend provides the following endpoints:
 
 - `GET /api/health` - Health check
-- `GET /api/projects` - List all projects
-- `GET /api/projects/:projectKey/issues` - Get issues for a specific project
-- `GET /api/issues` - Get all issues
-- `GET /api/statistics` - Get issue statistics (by status, type, priority, assignee)
-- `GET /api/performance?days=30` - Get team performance metrics
-- `GET /api/overview` - Get project overview with issue counts
-- `GET /api/technology-initiatives` - Get technology initiatives with custom fields
 - `GET /api/service-desk-analytics?days=30` - Get comprehensive service desk analytics with insights including request type breakdown analysis (default: 30 days)
 - `GET /api/service-desk-trends?days=30` - Get service desk trends for all configured teams (default: 30 days)
 - `GET /api/service-desk-trends-devops?days=30` - Get service desk trends for DevOps team only (default: 30 days)
-- `GET /api/devops-open-tickets-age?days=30` - Get average age trend of open DevOps tickets
+- `GET /api/devops-analytics?days=30` - Get combined DevOps analytics with trends and open tickets age data (default: 30 days)
+- `GET /api/devops-open-tickets-age?days=30` - Get average age trend of open DevOps tickets (default: 30 days)
 
 ## Dashboard Sections
 
-### Overview Tab
-
-#### Project Overview
-Displays all active projects with:
-- Project name and key
-- Total issue count
-- Project lead
-
-#### Service Desk Resolution Metrics
-Shows critical service desk performance metrics for the last 30 days:
-- **Combined Teams (DTI)**: Metrics across all configured service desk teams
-  - Average resolution time (days and hours) with conditional formatting
-  - Incident resolution time for [System] Incident, [System] Problem, and Build Issue types
-  - Total tickets created and resolved within the period
-  - Resolution rate percentage
-- **DevOps Team**: Same metrics filtered to DevOps team only
-- Color-coded metrics: Green when meeting targets (≤5 days, ≥90% resolution rate), Red when below targets
-
-#### Team Performance Metrics
-Shows key performance indicators:
-- Average cycle time (days)
-- Average lead time (days)
-- Weekly throughput
-- Total and resolved issues
-- Issues in progress
-- Actionable insights
-
-### Initiatives Tab
-
-#### Technology Initiatives
-Tracks technology-focused initiatives with:
-- Initiative name and key
-- Status and type
-- Completion percentage based on custom field
-- Priority level
-- Assignee information
-
-### Service Desk Tab
+### Service Desk Tab (Default)
 
 #### Service Desk Analytics
 Comprehensive analytics dashboard providing detailed insights into service desk operations (last 30 days):
@@ -265,7 +218,7 @@ Comprehensive analytics dashboard providing detailed insights into service desk 
   - Identifies patterns: Application Error, Build Pipeline, Deployment, Database, Certificate, Performance, Network, Server/Infrastructure
   - Helps teams focus on systemic issues requiring preventive action
 
-#### Service Desk Trends (Combined Teams)
+#### Service Desk Trends
 Shows metrics for all configured service desk teams:
 - Average resolution time (days and hours) - calculated from tickets resolved in the 30-day period
 - Total tickets created vs resolved - counts tickets created/resolved within the 30-day period
@@ -273,12 +226,24 @@ Shows metrics for all configured service desk teams:
 - 30-day trend line graph showing open tickets over time
 - **Conditional Formatting**: Metrics display in green when meeting targets (≤5 days resolution time, ≥90% resolution rate), red when below targets
 
+### DevOps Tab
+
+#### DevOps Analytics
+Comprehensive DevOps insights dashboard (last 30 days):
+- **4 Summary Tiles**: Total Requests, Resolution Rate, Average Resolution Time, and Open Tickets with average age
+- **Conditional Formatting**: Green for meeting targets (≤5 days resolution, ≥90% resolution rate), orange/red for warnings
+- **Key Insights**: Dynamic insights showing:
+  - Resolution performance (clearing backlog, steady state, or backlog building)
+  - Resolution speed indicator with target comparison
+  - Open ticket age analysis
+  - Aging ticket alerts for tickets >30 days old
+
 #### DevOps Service Desk Trends
 Dedicated view for DevOps team with:
-- Same metrics as combined view
+- Same metrics as Service Desk Trends
 - Filtered specifically to DevOps team tickets
 - Independent 30-day trend visualization
-- **Conditional Formatting**: Same targets and color coding as Combined Teams view
+- **Conditional Formatting**: Same targets and color coding as Service Desk tab
 
 #### DevOps Open Tickets Age Trend
 Tracks the average age of currently open DevOps tickets:

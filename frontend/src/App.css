@@ -155,6 +155,24 @@
   background-color: #98CC2E;
 }
 
+/* Split layout for side-by-side components */
+.split-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.split-item {
+  min-width: 0; /* Prevents grid items from overflowing */
+}
+
+@media (max-width: 1200px) {
+  .split-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .App-header {
     flex-direction: column;

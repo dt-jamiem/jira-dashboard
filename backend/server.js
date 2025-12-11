@@ -1390,6 +1390,31 @@ app.get('/api/service-desk-analytics', async (req, res) => {
   }
 });
 
+// Get DevOps analytics combining trends and age data
+app.get('/api/devops-analytics', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+
+    // Make parallel requests to get both trends and age data
+    const trendsPromise = axios.get(`http://localhost:${PORT}/api/service-desk-trends-devops?days=${days}`);
+    const agePromise = axios.get(`http://localhost:${PORT}/api/devops-open-tickets-age?days=${days}`);
+
+    const [trendsResponse, ageResponse] = await Promise.all([trendsPromise, agePromise]);
+
+    res.json({
+      trends: trendsResponse.data,
+      ageData: ageResponse.data
+    });
+
+  } catch (error) {
+    console.error('Error fetching DevOps analytics:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch DevOps analytics',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Jira Dashboard API running on http://localhost:${PORT}`);
   console.log(`Connecting to Jira: ${process.env.JIRA_URL}`);
