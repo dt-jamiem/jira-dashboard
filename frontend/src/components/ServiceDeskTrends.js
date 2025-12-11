@@ -43,8 +43,8 @@ function ServiceDeskTrends({ trends }) {
   const minOpenTickets = Math.min(...recentData.map(d => d.openTickets || 0));
 
   // Calculate Y-axis range with a floor to make differences more visible
-  // Set floor to 85% of minimum value (or 0 if minimum is very small)
-  const yMin = minOpenTickets > 20 ? Math.floor(minOpenTickets * 0.85) : 0;
+  // Set floor to 80% of minimum value, rounded down to nearest 10 (or 0 if minimum is very small)
+  const yMin = minOpenTickets > 20 ? Math.floor((minOpenTickets * 0.8) / 10) * 10 : 0;
   const yMax = maxOpenTickets;
   const yRange = yMax - yMin;
   const yScale = yRange > 0 ? innerHeight / yRange : 1;
