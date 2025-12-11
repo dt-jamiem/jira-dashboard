@@ -63,22 +63,6 @@ function ServiceDeskTrends({ trends }) {
       {/* Resolution Metrics */}
       <div className="metrics-grid">
         <div className="metric-card">
-          <div className="metric-label">Average Resolution Time</div>
-          <div className={`metric-value ${getResolutionTimeStatus(resolutionMetrics.avgResolutionTimeDays)}`}>
-            {resolutionMetrics.avgResolutionTimeDays} days
-          </div>
-          <div className="metric-subtext">({resolutionMetrics.avgResolutionTimeHours} hours)</div>
-          <div className="metric-subtext">Target: ≤ {RESOLUTION_TIME_TARGET} days</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Total Created</div>
-          <div className="metric-value">{resolutionMetrics.totalCreated}</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-label">Total Resolved</div>
-          <div className="metric-value">{resolutionMetrics.totalResolved}</div>
-        </div>
-        <div className="metric-card">
           <div className="metric-label">Resolution Rate</div>
           <div className={`metric-value ${getResolutionRateStatus(resolutionMetrics.resolutionRate)}`}>
             {resolutionMetrics.resolutionRate}%
