@@ -56,6 +56,12 @@ function ServiceDeskTrends({ trends }) {
   const delta = lastDataPoint - firstDataPoint;
   const deltaPercent = firstDataPoint > 0 ? ((delta / firstDataPoint) * 100).toFixed(1) : 0;
 
+  // Find dates for peak and lowest values
+  const maxDay = recentData.find(d => d.openTickets === maxOpenTickets);
+  const minDay = recentData.find(d => d.openTickets === minOpenTickets);
+  const maxDate = maxDay ? new Date(maxDay.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  const minDate = minDay ? new Date(minDay.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+
   // Generate line path
   const linePath = recentData
     .map((day, index) => {
@@ -81,7 +87,7 @@ function ServiceDeskTrends({ trends }) {
           <div className="insight-item">
             <span className="insight-icon">📈</span>
             <span className="insight-text">
-              <strong>Peak open tickets:</strong> {maxOpenTickets} tickets at highest point in period
+              <strong>Peak open tickets:</strong> {maxOpenTickets} tickets on {maxDate}
             </span>
           </div>
 
@@ -89,7 +95,7 @@ function ServiceDeskTrends({ trends }) {
           <div className="insight-item">
             <span className="insight-icon">📉</span>
             <span className="insight-text">
-              <strong>Lowest open tickets:</strong> {minOpenTickets} tickets at lowest point in period
+              <strong>Lowest open tickets:</strong> {minOpenTickets} tickets on {minDate}
             </span>
           </div>
 
