@@ -33,7 +33,7 @@ function ServiceDeskTrends({ trends }) {
 
   // Calculate chart dimensions and scale
   const chartWidth = 800;
-  const chartHeight = 200;
+  const chartHeight = 300;
   const padding = { top: 20, right: 20, bottom: 40, left: 50 };
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
