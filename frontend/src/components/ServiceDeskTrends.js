@@ -125,7 +125,7 @@ function ServiceDeskTrends({ trends }) {
                   x={padding.left - 10}
                   y={y + 4}
                   textAnchor="end"
-                  fontSize="14"
+                  fontSize="16"
                   fontWeight={ratio === 0 || ratio === 1 ? "700" : "400"}
                   fill="#6B778C"
                 >
@@ -177,7 +177,7 @@ function ServiceDeskTrends({ trends }) {
                   x={x}
                   y={padding.top + innerHeight + 20}
                   textAnchor="middle"
-                  fontSize="14"
+                  fontSize="16"
                   fill="#6B778C"
                 >
                   {date.getDate()}/{date.getMonth() + 1}
