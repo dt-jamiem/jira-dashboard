@@ -25,7 +25,7 @@ function ServiceDeskAnalytics({ analytics }) {
           <div className="summary-value">{analytics.totalTickets}</div>
           <div className="summary-label">Total Requests</div>
         </div>
-        <div className="summary-card">
+        <div className={`summary-card ${resolvedPercentage >= 90 ? 'success' : 'warning'}`}>
           <div className="summary-value">{resolvedPercentage}%</div>
           <div className="summary-label">Resolution Rate</div>
           <div className="summary-subtext">{totalResolvedInPeriod} resolved</div>
