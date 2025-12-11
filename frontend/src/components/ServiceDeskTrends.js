@@ -126,6 +126,7 @@ function ServiceDeskTrends({ trends }) {
                   y={y + 4}
                   textAnchor="end"
                   fontSize="14"
+                  fontWeight={ratio === 0 || ratio === 1 ? "700" : "400"}
                   fill="#6B778C"
                 >
                   {value}
