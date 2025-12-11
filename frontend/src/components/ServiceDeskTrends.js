@@ -43,6 +43,13 @@ function ServiceDeskTrends({ trends }) {
   const yScale = maxOpenTickets > 0 ? innerHeight / maxOpenTickets : 1;
   const xScale = innerWidth / (recentData.length - 1 || 1);
 
+  // Calculate insights metrics
+  const minOpenTickets = Math.min(...recentData.map(d => d.openTickets || 0));
+  const firstDataPoint = recentData[0]?.openTickets || 0;
+  const lastDataPoint = recentData[recentData.length - 1]?.openTickets || 0;
+  const delta = lastDataPoint - firstDataPoint;
+  const deltaPercent = firstDataPoint > 0 ? ((delta / firstDataPoint) * 100).toFixed(1) : 0;
+
   // Generate line path
   const linePath = recentData
     .map((day, index) => {
@@ -59,6 +66,36 @@ function ServiceDeskTrends({ trends }) {
     <div className="service-desk-trends">
       <h2>Service Desk Trends</h2>
       <p className="subtitle">Project DTI - Last {periodDays} days</p>
+
+      {/* Key Insights */}
+      <div className="insights-section">
+        <h3>Key Insights</h3>
+        <div className="insights-list">
+          {/* Peak Open Tickets */}
+          <div className="insight-item">
+            <span className="insight-icon">📈</span>
+            <span className="insight-text">
+              <strong>Peak open tickets:</strong> {maxOpenTickets} tickets at highest point in period
+            </span>
+          </div>
+
+          {/* Lowest Open Tickets */}
+          <div className="insight-item">
+            <span className="insight-icon">📉</span>
+            <span className="insight-text">
+              <strong>Lowest open tickets:</strong> {minOpenTickets} tickets at lowest point in period
+            </span>
+          </div>
+
+          {/* Delta over period */}
+          <div className={`insight-item ${delta > 0 ? 'warning' : delta < 0 ? 'success' : ''}`}>
+            <span className="insight-icon">{delta > 0 ? '⬆️' : delta < 0 ? '⬇️' : '➡️'}</span>
+            <span className="insight-text">
+              <strong>Period trend:</strong> {delta > 0 ? 'Increased' : delta < 0 ? 'Decreased' : 'No change'} by {Math.abs(delta)} tickets ({delta > 0 ? '+' : ''}{deltaPercent}%) from start to end of period
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Open Tickets Trend */}
       <div className="volume-section">
