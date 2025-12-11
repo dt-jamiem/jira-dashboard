@@ -93,7 +93,7 @@ function ServiceDeskTrends({ trends }) {
                   x={padding.left - 10}
                   y={y + 4}
                   textAnchor="end"
-                  fontSize="12"
+                  fontSize="14"
                   fill="#6B778C"
                 >
                   {value}
@@ -144,7 +144,7 @@ function ServiceDeskTrends({ trends }) {
                   x={x}
                   y={padding.top + innerHeight + 20}
                   textAnchor="middle"
-                  fontSize="11"
+                  fontSize="14"
                   fill="#6B778C"
                 >
                   {date.getDate()}/{date.getMonth() + 1}
