@@ -1540,22 +1540,352 @@ app.get('/api/service-desk-analytics', async (req, res) => {
 app.get('/api/devops-analytics', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
+    const dateStr = dateFrom.toISOString().split('T')[0];
 
-    // Make parallel requests to get both trends and age data
+    console.log(`Fetching DevOps analytics for last ${days} days (since ${dateStr})`);
+
+    // Make parallel requests to get trends and age data
     const trendsPromise = axios.get(`http://localhost:${PORT}/api/service-desk-trends-devops?days=${days}`);
     const agePromise = axios.get(`http://localhost:${PORT}/api/devops-open-tickets-age?days=${days}`);
+
+    // Fetch DevOps team tickets for request type breakdown
+    let allIssues = [];
+    let nextPageToken = null;
+
+    do {
+      const requestBody = {
+        jql: `Project = DTI AND "Team[Team]" IN (9b7aba3a-a76b-46b8-8a3b-658baad7c1a3) AND updated >= endOfDay(-${days}) ORDER BY updated DESC`,
+        fields: ['summary', 'status', 'created', 'resolutiondate', 'issuetype', 'customfield_10010', 'description']
+      };
+
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+
+      const response = await jiraAPI.post('/search/jql', requestBody);
+      allIssues = allIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+
+      if (response.data.isLast || allIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`DevOps Analytics: Collected ${allIssues.length} total tickets`);
+
+    // Define period boundaries
+    const periodStartDate = new Date(dateStr);
+    const periodEndDate = new Date();
+    periodEndDate.setHours(23, 59, 59, 999);
+
+    // Filter to tickets created in the period
+    const ticketsCreatedInPeriod = allIssues.filter(issue => {
+      const created = new Date(issue.fields.created);
+      return created >= periodStartDate && created <= periodEndDate;
+    });
+
+    console.log(`DevOps Analytics: ${ticketsCreatedInPeriod.length} tickets created within the period`);
+
+    // Analyze sub-categories within each top request type
+    const requestTypeBreakdown = {};
+
+    // Define keywords for each major request type
+    const requestTypeKeywords = {
+      'Access request': [
+        { pattern: /\b(github|git)\b/i, label: 'GitHub/Git' },
+        { pattern: /\bazure\b/i, label: 'Azure' },
+        { pattern: /\b(vpn|watchguard)\b/i, label: 'VPN' },
+        { pattern: /\b(sql|database)\b/i, label: 'SQL/Database' },
+        { pattern: /\bjira\b/i, label: 'Jira' },
+        { pattern: /\b(active directory|ad group)\b/i, label: 'Active Directory' },
+        { pattern: /\b(sharepoint|confluence)\b/i, label: 'SharePoint/Confluence' },
+        { pattern: /\b(claude|ai|copilot)\b/i, label: 'AI Tools' },
+        { pattern: /\b(office 365|teams|outlook)\b/i, label: 'Office 365' },
+        { pattern: /\b(license|subscription)\b/i, label: 'Licenses' }
+      ],
+      'Build or Deployment Issues': [
+        { pattern: /\b(production|prod)\b/i, label: 'Production Issues' },
+        { pattern: /\b(sandbox|test|dev)\b/i, label: 'Sandbox/Test Env' },
+        { pattern: /\b(deployment|deploy)\b/i, label: 'Deployment' },
+        { pattern: /\b(build|pipeline)\b/i, label: 'Build Pipeline' },
+        { pattern: /\b(database|sql|bi refresh)\b/i, label: 'Database/BI' },
+        { pattern: /\b(certificate|ssl|tls)\b/i, label: 'Certificates' },
+        { pattern: /\b(infrastructure|server)\b/i, label: 'Infrastructure' },
+        { pattern: /\b(package|dependency|npm)\b/i, label: 'Dependencies' }
+      ],
+      'General IT Help': [
+        { pattern: /\b(install|installation)\b/i, label: 'Software Install' },
+        { pattern: /\b(license|subscription|renewal)\b/i, label: 'Licensing' },
+        { pattern: /\b(teams|channel)\b/i, label: 'MS Teams' },
+        { pattern: /\b(office|excel|word|powerpoint|project)\b/i, label: 'Office Apps' },
+        { pattern: /\bjira\b/i, label: 'Jira Config' },
+        { pattern: /\b(sharepoint|onedrive)\b/i, label: 'SharePoint/OneDrive' },
+        { pattern: /\b(laptop|hardware|device)\b/i, label: 'Hardware' },
+        { pattern: /\b(email|outlook|inbox)\b/i, label: 'Email' },
+        { pattern: /\b(power bi|power automate|power platform)\b/i, label: 'Power Platform' },
+        { pattern: /\b(account|password|login)\b/i, label: 'Account Issues' }
+      ],
+      'New software': [
+        { pattern: /\b(visual studio|vs code|ide)\b/i, label: 'Development Tools' },
+        { pattern: /\b(office|excel|word|project)\b/i, label: 'Office Suite' },
+        { pattern: /\b(power bi|power automate|power platform)\b/i, label: 'Power Platform' },
+        { pattern: /\b(adobe|design|creative)\b/i, label: 'Adobe/Design Tools' },
+        { pattern: /\b(license|subscription)\b/i, label: 'Licenses' }
+      ],
+      'Server or infrastructure request': [
+        { pattern: /\b(azure|cloud)\b/i, label: 'Azure/Cloud' },
+        { pattern: /\b(database|sql)\b/i, label: 'Database' },
+        { pattern: /\b(certificate|ssl)\b/i, label: 'Certificates' },
+        { pattern: /\b(vm|virtual machine)\b/i, label: 'Virtual Machines' },
+        { pattern: /\b(storage|disk)\b/i, label: 'Storage' }
+      ]
+    };
+
+    // Group tickets by request type and analyze
+    ticketsCreatedInPeriod.forEach(issue => {
+      const requestType = issue.fields.customfield_10010?.requestType?.name;
+      if (!requestType || !requestTypeKeywords[requestType]) return;
+
+      if (!requestTypeBreakdown[requestType]) {
+        requestTypeBreakdown[requestType] = {
+          total: 0,
+          subCategories: {}
+        };
+      }
+
+      requestTypeBreakdown[requestType].total++;
+
+      const summary = (issue.fields.summary || '').toLowerCase();
+      let description = '';
+      if (issue.fields.description) {
+        if (typeof issue.fields.description === 'string') {
+          description = issue.fields.description.toLowerCase();
+        } else if (typeof issue.fields.description === 'object' && issue.fields.description.content) {
+          description = JSON.stringify(issue.fields.description).toLowerCase();
+        }
+      }
+      const fullText = `${summary} ${description}`;
+
+      // Check for keyword matches
+      let matched = false;
+      requestTypeKeywords[requestType].forEach(({ pattern, label }) => {
+        if (pattern.test(fullText)) {
+          if (!requestTypeBreakdown[requestType].subCategories[label]) {
+            requestTypeBreakdown[requestType].subCategories[label] = {
+              count: 0,
+              examples: []
+            };
+          }
+          requestTypeBreakdown[requestType].subCategories[label].count++;
+
+          // Store up to 2 examples
+          if (requestTypeBreakdown[requestType].subCategories[label].examples.length < 2) {
+            requestTypeBreakdown[requestType].subCategories[label].examples.push({
+              key: issue.key,
+              summary: issue.fields.summary
+            });
+          }
+          matched = true;
+        }
+      });
+
+      // If no match, categorize as "Other"
+      if (!matched) {
+        if (!requestTypeBreakdown[requestType].subCategories['Other']) {
+          requestTypeBreakdown[requestType].subCategories['Other'] = {
+            count: 0,
+            examples: []
+          };
+        }
+        requestTypeBreakdown[requestType].subCategories['Other'].count++;
+        if (requestTypeBreakdown[requestType].subCategories['Other'].examples.length < 2) {
+          requestTypeBreakdown[requestType].subCategories['Other'].examples.push({
+            key: issue.key,
+            summary: issue.fields.summary
+          });
+        }
+      }
+    });
+
+    // Convert sub-categories to sorted arrays
+    Object.keys(requestTypeBreakdown).forEach(requestType => {
+      const subCats = requestTypeBreakdown[requestType].subCategories;
+      requestTypeBreakdown[requestType].subCategories = Object.entries(subCats)
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([name, data]) => ({
+          name,
+          count: data.count,
+          examples: data.examples
+        }));
+    });
 
     const [trendsResponse, ageResponse] = await Promise.all([trendsPromise, agePromise]);
 
     res.json({
       trends: trendsResponse.data,
-      ageData: ageResponse.data
+      ageData: ageResponse.data,
+      requestTypeBreakdown: requestTypeBreakdown
     });
 
   } catch (error) {
     console.error('Error fetching DevOps analytics:', error.response?.data || error.message);
     res.status(500).json({
       error: 'Failed to fetch DevOps analytics',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Capacity Planning endpoint
+app.get('/api/capacity-planning', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    const dateStr = date.toISOString().split('T')[0];
+
+    // Base JQL for capacity planning
+    const baseJQL = 'Project IN (DTI, DEVOPS, TechOps, "Technology Group", "Technology Roadmap")';
+
+    // Fetch open tickets for current workload
+    const openTicketsJQL = `${baseJQL} AND statusCategory != Done ORDER BY created DESC`;
+
+    // Fetch recently created tickets for trend analysis
+    const recentTicketsJQL = `${baseJQL} AND created >= "${dateStr}" ORDER BY created DESC`;
+
+    // Fetch recently resolved tickets
+    const resolvedTicketsJQL = `${baseJQL} AND resolutiondate >= "${dateStr}" ORDER BY resolutiondate DESC`;
+
+    const [openResponse, recentResponse, resolvedResponse] = await Promise.all([
+      jiraAPI.post('/search/jql', {
+        jql: openTicketsJQL,
+        maxResults: 1000,
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate']
+      }),
+      jiraAPI.post('/search/jql', {
+        jql: recentTicketsJQL,
+        maxResults: 1000,
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate']
+      }),
+      jiraAPI.post('/search/jql', {
+        jql: resolvedTicketsJQL,
+        maxResults: 1000,
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate']
+      })
+    ]);
+
+    const openIssues = openResponse.data.issues;
+    const recentIssues = recentResponse.data.issues;
+    const resolvedIssues = resolvedResponse.data.issues;
+
+    // Calculate assignee workload
+    const assigneeWorkload = {};
+    openIssues.forEach(issue => {
+      const assignee = issue.fields.assignee?.displayName || 'Unassigned';
+      if (!assigneeWorkload[assignee]) {
+        assigneeWorkload[assignee] = {
+          openTickets: 0,
+          byPriority: {},
+          oldestTicket: null,
+          avgAge: 0,
+          tickets: []
+        };
+      }
+      assigneeWorkload[assignee].openTickets++;
+
+      const priority = issue.fields.priority?.name || 'None';
+      assigneeWorkload[assignee].byPriority[priority] = (assigneeWorkload[assignee].byPriority[priority] || 0) + 1;
+
+      const ticketAge = Math.floor((new Date() - new Date(issue.fields.created)) / (1000 * 60 * 60 * 24));
+      assigneeWorkload[assignee].tickets.push(ticketAge);
+
+      if (!assigneeWorkload[assignee].oldestTicket || ticketAge > assigneeWorkload[assignee].oldestTicket) {
+        assigneeWorkload[assignee].oldestTicket = ticketAge;
+      }
+    });
+
+    // Calculate average age for each assignee
+    Object.keys(assigneeWorkload).forEach(assignee => {
+      const ages = assigneeWorkload[assignee].tickets;
+      if (ages.length > 0) {
+        assigneeWorkload[assignee].avgAge = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
+      }
+      delete assigneeWorkload[assignee].tickets; // Remove the raw data
+    });
+
+    // Calculate resolution metrics
+    let totalResolutionTime = 0;
+    let resolutionCount = 0;
+    resolvedIssues.forEach(issue => {
+      if (issue.fields.created && issue.fields.resolutiondate) {
+        const created = new Date(issue.fields.created);
+        const resolved = new Date(issue.fields.resolutiondate);
+        const resolutionTime = Math.floor((resolved - created) / (1000 * 60 * 60 * 24));
+        totalResolutionTime += resolutionTime;
+        resolutionCount++;
+      }
+    });
+
+    const avgResolutionTime = resolutionCount > 0 ? Math.round(totalResolutionTime / resolutionCount) : 0;
+
+    // Calculate ticket flow by day
+    const ticketFlow = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split('T')[0];
+      ticketFlow[dateKey] = { created: 0, resolved: 0 };
+    }
+
+    recentIssues.forEach(issue => {
+      const createdDate = issue.fields.created.split('T')[0];
+      if (ticketFlow[createdDate]) {
+        ticketFlow[createdDate].created++;
+      }
+    });
+
+    resolvedIssues.forEach(issue => {
+      if (issue.fields.resolutiondate) {
+        const resolvedDate = issue.fields.resolutiondate.split('T')[0];
+        if (ticketFlow[resolvedDate]) {
+          ticketFlow[resolvedDate].resolved++;
+        }
+      }
+    });
+
+    // Convert to array and sort by date
+    const flowData = Object.entries(ticketFlow)
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Calculate team velocity (tickets resolved per week)
+    const weeksInPeriod = Math.ceil(days / 7);
+    const velocity = weeksInPeriod > 0 ? Math.round(resolvedIssues.length / weeksInPeriod) : 0;
+
+    // Sort assignees by workload
+    const sortedAssignees = Object.entries(assigneeWorkload)
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.openTickets - a.openTickets);
+
+    res.json({
+      summary: {
+        totalOpenTickets: openIssues.length,
+        ticketsCreated: recentIssues.length,
+        ticketsResolved: resolvedIssues.length,
+        avgResolutionTime: avgResolutionTime,
+        velocity: velocity,
+        period: days
+      },
+      assigneeWorkload: sortedAssignees,
+      ticketFlow: flowData
+    });
+
+  } catch (error) {
+    console.error('Error fetching capacity planning data:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to fetch capacity planning data',
       details: error.response?.data || error.message
     });
   }

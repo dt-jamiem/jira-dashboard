@@ -3,20 +3,20 @@ import axios from 'axios';
 import './App.css';
 import ServiceDeskTrends from './components/ServiceDeskTrends';
 import ServiceDeskAgeTrend from './components/ServiceDeskAgeTrend';
-import DevOpsServiceDesk from './components/DevOpsServiceDesk';
-import DevOpsOpenTicketsAge from './components/DevOpsOpenTicketsAge';
 import ServiceDeskAnalytics from './components/ServiceDeskAnalytics';
 import DevOpsAnalytics from './components/DevOpsAnalytics';
+import DevOpsServiceDesk from './components/DevOpsServiceDesk';
+import DevOpsOpenTicketsAge from './components/DevOpsOpenTicketsAge';
+import CapacityPlanning from './components/CapacityPlanning';
 
 function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serviceDeskTrends, setServiceDeskTrends] = useState(null);
   const [serviceDeskAgeTrend, setServiceDeskAgeTrend] = useState(null);
-  const [devopsServiceDesk, setDevopsServiceDesk] = useState(null);
-  const [devopsOpenTicketsAge, setDevopsOpenTicketsAge] = useState(null);
   const [serviceDeskAnalytics, setServiceDeskAnalytics] = useState(null);
   const [devopsAnalytics, setDevopsAnalytics] = useState(null);
+  const [capacityData, setCapacityData] = useState(null);
   const [activeTab, setActiveTab] = useState('servicedesk');
 
   useEffect(() => {
@@ -28,21 +28,19 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [serviceDeskRes, serviceDeskAgeRes, devopsRes, ageRes, analyticsRes, devopsAnalyticsRes] = await Promise.all([
+      const [serviceDeskRes, serviceDeskAgeRes, analyticsRes, devopsAnalyticsRes, capacityRes] = await Promise.all([
         axios.get('/api/service-desk-trends?days=30'),
         axios.get('/api/service-desk-age-trends?days=30'),
-        axios.get('/api/service-desk-trends-devops?days=30'),
-        axios.get('/api/devops-open-tickets-age?days=30'),
         axios.get('/api/service-desk-analytics?days=30'),
-        axios.get('/api/devops-analytics?days=30')
+        axios.get('/api/devops-analytics?days=30'),
+        axios.get('/api/capacity-planning?days=30')
       ]);
 
       setServiceDeskTrends(serviceDeskRes.data);
       setServiceDeskAgeTrend(serviceDeskAgeRes.data);
-      setDevopsServiceDesk(devopsRes.data);
-      setDevopsOpenTicketsAge(ageRes.data);
       setServiceDeskAnalytics(analyticsRes.data);
       setDevopsAnalytics(devopsAnalyticsRes.data);
+      setCapacityData(capacityRes.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.error || 'Failed to fetch data from Jira');
@@ -91,7 +89,13 @@ function App() {
           className={`tab-btn ${activeTab === 'servicedesk' ? 'active' : ''}`}
           onClick={() => setActiveTab('servicedesk')}
         >
-          Service Desk
+          All Technology
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'trends' ? 'active' : ''}`}
+          onClick={() => setActiveTab('trends')}
+        >
+          Technology Trends
         </button>
         <button
           className={`tab-btn ${activeTab === 'devops' ? 'active' : ''}`}
@@ -100,10 +104,16 @@ function App() {
           DevOps
         </button>
         <button
-          className={`tab-btn ${activeTab === 'trends' ? 'active' : ''}`}
-          onClick={() => setActiveTab('trends')}
+          className={`tab-btn ${activeTab === 'devopstrends' ? 'active' : ''}`}
+          onClick={() => setActiveTab('devopstrends')}
         >
-          Trends
+          DevOps Trends
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'capacity' ? 'active' : ''}`}
+          onClick={() => setActiveTab('capacity')}
+        >
+          Capacity Planning
         </button>
       </nav>
 
@@ -121,26 +131,35 @@ function App() {
         )}
 
         {activeTab === 'trends' && (
-          <>
-            <section className="dashboard-section dashboard-section-split">
-              <div className="split-container">
-                <div className="split-item">
-                  <ServiceDeskTrends trends={serviceDeskTrends} />
-                </div>
-                <div className="split-item">
-                  <ServiceDeskAgeTrend ageData={serviceDeskAgeTrend} />
-                </div>
+          <section className="dashboard-section dashboard-section-split">
+            <div className="split-container">
+              <div className="split-item">
+                <ServiceDeskTrends trends={serviceDeskTrends} />
               </div>
-            </section>
+              <div className="split-item">
+                <ServiceDeskAgeTrend ageData={serviceDeskAgeTrend} />
+              </div>
+            </div>
+          </section>
+        )}
 
-            <section className="dashboard-section dashboard-section-split">
-              <div className="split-container">
-                <div className="split-item">
-                  <DevOpsOpenTicketsAge ageData={devopsOpenTicketsAge} />
-                </div>
+        {activeTab === 'devopstrends' && (
+          <section className="dashboard-section dashboard-section-split">
+            <div className="split-container">
+              <div className="split-item">
+                <DevOpsServiceDesk trends={devopsAnalytics?.trends} />
               </div>
-            </section>
-          </>
+              <div className="split-item">
+                <DevOpsOpenTicketsAge ageData={devopsAnalytics?.ageData} />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'capacity' && (
+          <section className="dashboard-section">
+            <CapacityPlanning data={capacityData} />
+          </section>
         )}
       </main>
     </div>
