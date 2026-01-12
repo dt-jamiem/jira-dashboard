@@ -15,8 +15,8 @@ function CapacityPlanning({ data }) {
 
   const { summary, assigneeWorkload, ticketFlow } = data;
 
-  // Calculate max values for bar chart scaling
-  const maxWorkload = Math.max(...assigneeWorkload.map(a => a.openTickets), 1);
+  // Calculate max values for bar chart scaling (using estimate hours)
+  const maxWorkload = Math.max(...assigneeWorkload.map(a => a.estimateHours || 0), 1);
 
   // Find peak created/resolved for flow chart
   const maxCreated = Math.max(...ticketFlow.map(d => d.created), 1);
@@ -37,14 +37,38 @@ function CapacityPlanning({ data }) {
         <div className="capacity-card">
           <div className="capacity-card-label">Open Tickets</div>
           <div className="capacity-card-value">{summary.totalOpenTickets}</div>
+          {summary.openTicketsWithEstimate > 0 && (
+            <div className="capacity-card-subtitle">
+              {summary.openTicketsWithEstimate} with estimates
+            </div>
+          )}
+        </div>
+        <div className="capacity-card">
+          <div className="capacity-card-label">Open Estimate</div>
+          <div className="capacity-card-value">{summary.openEstimateHours} <span className="velocity-unit">hours</span></div>
+          {summary.openTicketsWithEstimate > 0 && (
+            <div className="capacity-card-subtitle">
+              {Math.round((summary.openTicketsWithEstimate / summary.totalOpenTickets) * 100)}% estimated
+            </div>
+          )}
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Tickets Created</div>
           <div className="capacity-card-value">{summary.ticketsCreated}</div>
+          {summary.createdTicketsWithEstimate > 0 && (
+            <div className="capacity-card-subtitle">
+              {summary.createdEstimateHours}h estimated
+            </div>
+          )}
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Tickets Resolved</div>
           <div className="capacity-card-value">{summary.ticketsResolved}</div>
+          {summary.resolvedTicketsWithEstimate > 0 && (
+            <div className="capacity-card-subtitle">
+              {summary.resolvedEstimateHours}h estimated
+            </div>
+          )}
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Avg Resolution Time</div>
@@ -70,6 +94,7 @@ function CapacityPlanning({ data }) {
           <div className="workload-header">
             <div className="workload-col-assignee">Team Member</div>
             <div className="workload-col-tickets">Open Tickets</div>
+            <div className="workload-col-estimate">Estimate (hrs)</div>
             <div className="workload-col-age">Avg Age</div>
             <div className="workload-col-oldest">Oldest</div>
             <div className="workload-col-chart">Load</div>
@@ -77,7 +102,15 @@ function CapacityPlanning({ data }) {
           {assigneeWorkload.slice(0, 15).map((assignee, index) => (
             <div key={index} className="workload-row">
               <div className="workload-col-assignee">{assignee.name}</div>
-              <div className="workload-col-tickets">{assignee.openTickets}</div>
+              <div className="workload-col-tickets">
+                {assignee.openTickets}
+                {assignee.ticketsWithEstimate > 0 && (
+                  <span className="estimated-count"> ({assignee.ticketsWithEstimate})</span>
+                )}
+              </div>
+              <div className="workload-col-estimate">
+                {assignee.estimateHours > 0 ? assignee.estimateHours : '-'}
+              </div>
               <div className="workload-col-age">{assignee.avgAge} days</div>
               <div className="workload-col-oldest">
                 <span className={assignee.oldestTicket > 30 ? 'age-warning' : ''}>
@@ -88,7 +121,7 @@ function CapacityPlanning({ data }) {
                 <div className="workload-bar-container">
                   <div
                     className="workload-bar"
-                    style={{ width: `${(assignee.openTickets / maxWorkload) * 100}%` }}
+                    style={{ width: `${assignee.estimateHours > 0 ? (assignee.estimateHours / maxWorkload) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>

@@ -1762,17 +1762,17 @@ app.get('/api/capacity-planning', async (req, res) => {
       jiraAPI.post('/search/jql', {
         jql: openTicketsJQL,
         maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate']
       }),
       jiraAPI.post('/search/jql', {
         jql: recentTicketsJQL,
         maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate']
       }),
       jiraAPI.post('/search/jql', {
         jql: resolvedTicketsJQL,
         maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate']
       })
     ]);
 
@@ -1790,7 +1790,9 @@ app.get('/api/capacity-planning', async (req, res) => {
           byPriority: {},
           oldestTicket: null,
           avgAge: 0,
-          tickets: []
+          tickets: [],
+          estimateSeconds: 0,
+          ticketsWithEstimate: 0
         };
       }
       assigneeWorkload[assignee].openTickets++;
@@ -1804,15 +1806,25 @@ app.get('/api/capacity-planning', async (req, res) => {
       if (!assigneeWorkload[assignee].oldestTicket || ticketAge > assigneeWorkload[assignee].oldestTicket) {
         assigneeWorkload[assignee].oldestTicket = ticketAge;
       }
+
+      // Track original estimates
+      if (issue.fields.timeoriginalestimate) {
+        assigneeWorkload[assignee].estimateSeconds += issue.fields.timeoriginalestimate;
+        assigneeWorkload[assignee].ticketsWithEstimate++;
+      }
     });
 
-    // Calculate average age for each assignee
+    // Calculate average age and convert estimates to hours for each assignee
     Object.keys(assigneeWorkload).forEach(assignee => {
       const ages = assigneeWorkload[assignee].tickets;
       if (ages.length > 0) {
         assigneeWorkload[assignee].avgAge = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
       }
       delete assigneeWorkload[assignee].tickets; // Remove the raw data
+
+      // Convert estimate from seconds to hours
+      assigneeWorkload[assignee].estimateHours = Math.round(assigneeWorkload[assignee].estimateSeconds / 3600);
+      delete assigneeWorkload[assignee].estimateSeconds; // Remove seconds, keep hours
     });
 
     // Calculate resolution metrics
@@ -1864,10 +1876,50 @@ app.get('/api/capacity-planning', async (req, res) => {
     const weeksInPeriod = Math.ceil(days / 7);
     const velocity = weeksInPeriod > 0 ? Math.round(resolvedIssues.length / weeksInPeriod) : 0;
 
-    // Sort assignees by workload
+    // Calculate original estimates (in seconds, convert to hours)
+    let totalOpenEstimate = 0;
+    let openTicketsWithEstimate = 0;
+    let totalCreatedEstimate = 0;
+    let createdTicketsWithEstimate = 0;
+    let totalResolvedEstimate = 0;
+    let resolvedTicketsWithEstimate = 0;
+
+    openIssues.forEach(issue => {
+      if (issue.fields.timeoriginalestimate) {
+        totalOpenEstimate += issue.fields.timeoriginalestimate;
+        openTicketsWithEstimate++;
+      }
+    });
+
+    recentIssues.forEach(issue => {
+      if (issue.fields.timeoriginalestimate) {
+        totalCreatedEstimate += issue.fields.timeoriginalestimate;
+        createdTicketsWithEstimate++;
+      }
+    });
+
+    resolvedIssues.forEach(issue => {
+      if (issue.fields.timeoriginalestimate) {
+        totalResolvedEstimate += issue.fields.timeoriginalestimate;
+        resolvedTicketsWithEstimate++;
+      }
+    });
+
+    // Convert from seconds to hours
+    const openEstimateHours = Math.round(totalOpenEstimate / 3600);
+    const createdEstimateHours = Math.round(totalCreatedEstimate / 3600);
+    const resolvedEstimateHours = Math.round(totalResolvedEstimate / 3600);
+
+    // Sort assignees by workload (estimate hours, then by open tickets if no estimates)
     const sortedAssignees = Object.entries(assigneeWorkload)
       .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.openTickets - a.openTickets);
+      .sort((a, b) => {
+        // Sort by estimate hours first, then by ticket count
+        if (b.estimateHours !== a.estimateHours) {
+          return b.estimateHours - a.estimateHours;
+        }
+        return b.openTickets - a.openTickets;
+      });
 
     res.json({
       summary: {
@@ -1876,7 +1928,13 @@ app.get('/api/capacity-planning', async (req, res) => {
         ticketsResolved: resolvedIssues.length,
         avgResolutionTime: avgResolutionTime,
         velocity: velocity,
-        period: days
+        period: days,
+        openEstimateHours: openEstimateHours,
+        openTicketsWithEstimate: openTicketsWithEstimate,
+        createdEstimateHours: createdEstimateHours,
+        createdTicketsWithEstimate: createdTicketsWithEstimate,
+        resolvedEstimateHours: resolvedEstimateHours,
+        resolvedTicketsWithEstimate: resolvedTicketsWithEstimate
       },
       assigneeWorkload: sortedAssignees,
       ticketFlow: flowData

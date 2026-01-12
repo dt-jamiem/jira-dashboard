@@ -63,6 +63,13 @@
   color: #323E48;
 }
 
+.capacity-card-subtitle {
+  font-size: 0.75rem;
+  color: #6B778C;
+  margin-top: 0.25rem;
+  font-weight: normal;
+}
+
 .velocity-unit {
   font-size: 0.8rem;
   font-weight: normal;
@@ -101,7 +108,7 @@
 
 .workload-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 2fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
   background: linear-gradient(135deg, #323E48 0%, #44546A 100%);
   color: white;
   padding: 0.875rem 1rem;
@@ -111,7 +118,7 @@
 
 .workload-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 2fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
   padding: 0.875rem 1rem;
   border-bottom: 1px solid #e0e0e0;
   transition: background-color 0.2s ease;
@@ -135,6 +142,18 @@
   text-align: center;
   font-weight: 600;
   color: #44546A;
+}
+
+.estimated-count {
+  font-size: 0.85rem;
+  color: #6B778C;
+  font-weight: normal;
+}
+
+.workload-col-estimate {
+  text-align: center;
+  font-weight: 600;
+  color: #A9DE33;
 }
 
 .workload-col-age,
@@ -298,7 +317,8 @@
     font-size: 0.85rem;
   }
 
-  .workload-col-chart {
+  .workload-col-chart,
+  .workload-col-age {
     display: none;
   }
 
