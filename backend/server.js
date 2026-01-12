@@ -1746,17 +1746,17 @@ app.get('/api/capacity-planning', async (req, res) => {
     date.setDate(date.getDate() - days);
     const dateStr = date.toISOString().split('T')[0];
 
-    // Base JQL for capacity planning
-    const baseJQL = 'Project IN (DTI, DEVOPS, TechOps, "Technology Group", "Technology Roadmap")';
+    // Base JQL for capacity planning - aligned with dashboard filters
+    const baseJQL = '(Project IN (DEVOPS, TechOps, "Technology Group", "Technology Roadmap") OR (Project = DTI AND "Team[Team]" IN (01c3b859-1307-41e3-8a88-24c701dd1713, 9888ca76-8551-47b3-813f-4bf5df9e9762, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72)))';
 
     // Fetch open tickets for current workload
-    const openTicketsJQL = `${baseJQL} AND statusCategory != Done ORDER BY created DESC`;
+    const openTicketsJQL = `${baseJQL} AND statusCategory NOT IN (Done) ORDER BY created DESC`;
 
     // Fetch recently created tickets for trend analysis
     const recentTicketsJQL = `${baseJQL} AND created >= "${dateStr}" ORDER BY created DESC`;
 
     // Fetch recently resolved tickets
-    const resolvedTicketsJQL = `${baseJQL} AND resolutiondate >= "${dateStr}" ORDER BY resolutiondate DESC`;
+    const resolvedTicketsJQL = `${baseJQL} AND statusCategory IN (Done) AND resolutiondate >= "${dateStr}" ORDER BY resolutiondate DESC`;
 
     const [openResponse, recentResponse, resolvedResponse] = await Promise.all([
       jiraAPI.post('/search/jql', {
