@@ -13,10 +13,10 @@ function CapacityPlanning({ data }) {
     );
   }
 
-  const { summary, assigneeWorkload, ticketFlow } = data;
+  const { summary, assigneeWorkload, ticketFlow} = data;
 
-  // Calculate max values for bar chart scaling (using estimate hours)
-  const maxWorkload = Math.max(...assigneeWorkload.map(a => a.estimateHours || 0), 1);
+  // Calculate max values for bar chart scaling (using total hours including defaults)
+  const maxWorkload = Math.max(...assigneeWorkload.map(a => a.totalHours || 0), 1);
 
   // Find peak created/resolved for flow chart
   const maxCreated = Math.max(...ticketFlow.map(d => d.created), 1);
@@ -45,30 +45,24 @@ function CapacityPlanning({ data }) {
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Open Estimate</div>
-          <div className="capacity-card-value">{summary.openEstimateHours} <span className="velocity-unit">hours</span></div>
-          {summary.openTicketsWithEstimate > 0 && (
-            <div className="capacity-card-subtitle">
-              {Math.round((summary.openTicketsWithEstimate / summary.totalOpenTickets) * 100)}% estimated
-            </div>
-          )}
+          <div className="capacity-card-value">{summary.openTotalHours} <span className="velocity-unit">hours</span></div>
+          <div className="capacity-card-subtitle">
+            {summary.openEstimateHours}h est + {summary.openDefaultHours}h def
+          </div>
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Tickets Created</div>
           <div className="capacity-card-value">{summary.ticketsCreated}</div>
-          {summary.createdTicketsWithEstimate > 0 && (
-            <div className="capacity-card-subtitle">
-              {summary.createdEstimateHours}h estimated
-            </div>
-          )}
+          <div className="capacity-card-subtitle">
+            {summary.createdTotalHours}h total ({summary.createdEstimateHours}h + {summary.createdDefaultHours}h)
+          </div>
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Tickets Resolved</div>
           <div className="capacity-card-value">{summary.ticketsResolved}</div>
-          {summary.resolvedTicketsWithEstimate > 0 && (
-            <div className="capacity-card-subtitle">
-              {summary.resolvedEstimateHours}h estimated
-            </div>
-          )}
+          <div className="capacity-card-subtitle">
+            {summary.resolvedTotalHours}h total ({summary.resolvedEstimateHours}h + {summary.resolvedDefaultHours}h)
+          </div>
         </div>
         <div className="capacity-card">
           <div className="capacity-card-label">Avg Resolution Time</div>
@@ -109,7 +103,7 @@ function CapacityPlanning({ data }) {
                 )}
               </div>
               <div className="workload-col-estimate">
-                {assignee.estimateHours > 0 ? assignee.estimateHours : '-'}
+                {assignee.totalHours > 0 ? `${assignee.totalHours} (${assignee.estimateHours}+${assignee.defaultHours})` : '-'}
               </div>
               <div className="workload-col-age">{assignee.avgAge} days</div>
               <div className="workload-col-oldest">
@@ -121,7 +115,7 @@ function CapacityPlanning({ data }) {
                 <div className="workload-bar-container">
                   <div
                     className="workload-bar"
-                    style={{ width: `${assignee.estimateHours > 0 ? (assignee.estimateHours / maxWorkload) * 100 : 0}%` }}
+                    style={{ width: `${assignee.totalHours > 0 ? (assignee.totalHours / maxWorkload) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>

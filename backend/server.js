@@ -1762,17 +1762,17 @@ app.get('/api/capacity-planning', async (req, res) => {
       jiraAPI.post('/search/jql', {
         jql: openTicketsJQL,
         maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
       }),
       jiraAPI.post('/search/jql', {
         jql: recentTicketsJQL,
         maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
       }),
       jiraAPI.post('/search/jql', {
         jql: resolvedTicketsJQL,
         maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
       })
     ]);
 
@@ -1792,7 +1792,9 @@ app.get('/api/capacity-planning', async (req, res) => {
           avgAge: 0,
           tickets: [],
           estimateSeconds: 0,
-          ticketsWithEstimate: 0
+          defaultSeconds: 0,
+          ticketsWithEstimate: 0,
+          ticketsWithDefault: 0
         };
       }
       assigneeWorkload[assignee].openTickets++;
@@ -1807,10 +1809,16 @@ app.get('/api/capacity-planning', async (req, res) => {
         assigneeWorkload[assignee].oldestTicket = ticketAge;
       }
 
-      // Track original estimates
+      // Track original estimates and defaults
       if (issue.fields.timeoriginalestimate) {
         assigneeWorkload[assignee].estimateSeconds += issue.fields.timeoriginalestimate;
         assigneeWorkload[assignee].ticketsWithEstimate++;
+      } else {
+        const defaultEst = getDefaultEstimate(issue);
+        if (defaultEst > 0) {
+          assigneeWorkload[assignee].defaultSeconds += defaultEst;
+          assigneeWorkload[assignee].ticketsWithDefault++;
+        }
       }
     });
 
@@ -1822,9 +1830,13 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
       delete assigneeWorkload[assignee].tickets; // Remove the raw data
 
-      // Convert estimate from seconds to hours
+      // Convert estimates from seconds to hours
       assigneeWorkload[assignee].estimateHours = Math.round(assigneeWorkload[assignee].estimateSeconds / 3600);
+      assigneeWorkload[assignee].defaultHours = Math.round(assigneeWorkload[assignee].defaultSeconds / 3600);
+      assigneeWorkload[assignee].totalHours = assigneeWorkload[assignee].estimateHours + assigneeWorkload[assignee].defaultHours;
+
       delete assigneeWorkload[assignee].estimateSeconds; // Remove seconds, keep hours
+      delete assigneeWorkload[assignee].defaultSeconds;
     });
 
     // Calculate resolution metrics
@@ -1876,18 +1888,63 @@ app.get('/api/capacity-planning', async (req, res) => {
     const weeksInPeriod = Math.ceil(days / 7);
     const velocity = weeksInPeriod > 0 ? Math.round(resolvedIssues.length / weeksInPeriod) : 0;
 
-    // Calculate original estimates (in seconds, convert to hours)
+    // Helper function to calculate default estimate
+    const getDefaultEstimate = (issue) => {
+      // Check if original estimate exists
+      if (issue.fields.timeoriginalestimate) {
+        return 0; // No default needed
+      }
+
+      // Check if item qualifies for default estimate
+      const projectKey = issue.fields.project?.key;
+      const issueTypeName = issue.fields.issuetype?.name;
+      const statusCategory = issue.fields.status?.statusCategory?.name;
+
+      // Apply to DTI project items or User Stories/Tasks in other projects
+      const qualifies = projectKey === 'DTI' ||
+                       issueTypeName === 'Story' ||
+                       issueTypeName === 'Task';
+
+      if (!qualifies) {
+        return 0;
+      }
+
+      // Determine default hours based on status
+      if (statusCategory === 'To Do') {
+        return 4 * 3600; // 4 hours in seconds
+      } else if (statusCategory === 'In Progress') {
+        return 2 * 3600; // 2 hours in seconds
+      } else {
+        return 0; // Done or other status
+      }
+    };
+
+    // Calculate original estimates and default estimates (in seconds, convert to hours)
     let totalOpenEstimate = 0;
+    let totalOpenDefault = 0;
     let openTicketsWithEstimate = 0;
+    let openTicketsWithDefault = 0;
+
     let totalCreatedEstimate = 0;
+    let totalCreatedDefault = 0;
     let createdTicketsWithEstimate = 0;
+    let createdTicketsWithDefault = 0;
+
     let totalResolvedEstimate = 0;
+    let totalResolvedDefault = 0;
     let resolvedTicketsWithEstimate = 0;
+    let resolvedTicketsWithDefault = 0;
 
     openIssues.forEach(issue => {
       if (issue.fields.timeoriginalestimate) {
         totalOpenEstimate += issue.fields.timeoriginalestimate;
         openTicketsWithEstimate++;
+      } else {
+        const defaultEst = getDefaultEstimate(issue);
+        if (defaultEst > 0) {
+          totalOpenDefault += defaultEst;
+          openTicketsWithDefault++;
+        }
       }
     });
 
@@ -1895,6 +1952,12 @@ app.get('/api/capacity-planning', async (req, res) => {
       if (issue.fields.timeoriginalestimate) {
         totalCreatedEstimate += issue.fields.timeoriginalestimate;
         createdTicketsWithEstimate++;
+      } else {
+        const defaultEst = getDefaultEstimate(issue);
+        if (defaultEst > 0) {
+          totalCreatedDefault += defaultEst;
+          createdTicketsWithDefault++;
+        }
       }
     });
 
@@ -1902,21 +1965,35 @@ app.get('/api/capacity-planning', async (req, res) => {
       if (issue.fields.timeoriginalestimate) {
         totalResolvedEstimate += issue.fields.timeoriginalestimate;
         resolvedTicketsWithEstimate++;
+      } else {
+        const defaultEst = getDefaultEstimate(issue);
+        if (defaultEst > 0) {
+          totalResolvedDefault += defaultEst;
+          resolvedTicketsWithDefault++;
+        }
       }
     });
 
     // Convert from seconds to hours
     const openEstimateHours = Math.round(totalOpenEstimate / 3600);
-    const createdEstimateHours = Math.round(totalCreatedEstimate / 3600);
-    const resolvedEstimateHours = Math.round(totalResolvedEstimate / 3600);
+    const openDefaultHours = Math.round(totalOpenDefault / 3600);
+    const openTotalHours = openEstimateHours + openDefaultHours;
 
-    // Sort assignees by workload (estimate hours, then by open tickets if no estimates)
+    const createdEstimateHours = Math.round(totalCreatedEstimate / 3600);
+    const createdDefaultHours = Math.round(totalCreatedDefault / 3600);
+    const createdTotalHours = createdEstimateHours + createdDefaultHours;
+
+    const resolvedEstimateHours = Math.round(totalResolvedEstimate / 3600);
+    const resolvedDefaultHours = Math.round(totalResolvedDefault / 3600);
+    const resolvedTotalHours = resolvedEstimateHours + resolvedDefaultHours;
+
+    // Sort assignees by workload (total hours including defaults, then by open tickets)
     const sortedAssignees = Object.entries(assigneeWorkload)
       .map(([name, data]) => ({ name, ...data }))
       .sort((a, b) => {
-        // Sort by estimate hours first, then by ticket count
-        if (b.estimateHours !== a.estimateHours) {
-          return b.estimateHours - a.estimateHours;
+        // Sort by total hours first, then by ticket count
+        if (b.totalHours !== a.totalHours) {
+          return b.totalHours - a.totalHours;
         }
         return b.openTickets - a.openTickets;
       });
@@ -1930,11 +2007,20 @@ app.get('/api/capacity-planning', async (req, res) => {
         velocity: velocity,
         period: days,
         openEstimateHours: openEstimateHours,
+        openDefaultHours: openDefaultHours,
+        openTotalHours: openTotalHours,
         openTicketsWithEstimate: openTicketsWithEstimate,
+        openTicketsWithDefault: openTicketsWithDefault,
         createdEstimateHours: createdEstimateHours,
+        createdDefaultHours: createdDefaultHours,
+        createdTotalHours: createdTotalHours,
         createdTicketsWithEstimate: createdTicketsWithEstimate,
+        createdTicketsWithDefault: createdTicketsWithDefault,
         resolvedEstimateHours: resolvedEstimateHours,
-        resolvedTicketsWithEstimate: resolvedTicketsWithEstimate
+        resolvedDefaultHours: resolvedDefaultHours,
+        resolvedTotalHours: resolvedTotalHours,
+        resolvedTicketsWithEstimate: resolvedTicketsWithEstimate,
+        resolvedTicketsWithDefault: resolvedTicketsWithDefault
       },
       assigneeWorkload: sortedAssignees,
       ticketFlow: flowData
