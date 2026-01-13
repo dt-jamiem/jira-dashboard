@@ -87,33 +87,78 @@ function CapacityPlanning({ data }) {
                 </div>
 
                 {/* Child Rows */}
-                {hasChildren && isExpanded && group.children.map((child, childIndex) => (
-                  <div key={`${index}-${childIndex}`} className="parent-grouping-row child-row">
-                    <div className="parent-col-name child-indent">{child.name}</div>
-                    <div className="parent-col-type">{child.type}</div>
-                    <div className="parent-col-tickets">{child.tickets}</div>
-                    <div className="parent-col-estimated">
-                      {child.estimateHours > 0 ? child.estimateHours : '-'}
-                    </div>
-                    <div className="parent-col-guess">
-                      {child.defaultHours > 0 ? child.defaultHours : '-'}
-                    </div>
-                    <div className="parent-col-total">
-                      {child.totalHours > 0 ? child.totalHours : '-'}
-                    </div>
-                    <div className="parent-col-days">
-                      {child.totalHours > 0 ? (child.totalHours / 6).toFixed(1) : '-'}
-                    </div>
-                    <div className="parent-col-chart">
-                      <div className="parent-bar-container">
-                        <div
-                          className="parent-bar"
-                          style={{ width: `${child.totalHours > 0 ? (child.totalHours / maxParentWorkload) * 100 : 0}%` }}
-                        ></div>
+                {hasChildren && isExpanded && group.children.map((child, childIndex) => {
+                  const childHasChildren = child.children && child.children.length > 0;
+                  const isChildExpanded = expandedGroups[child.key];
+
+                  return (
+                    <React.Fragment key={`${index}-${childIndex}`}>
+                      <div
+                        className={`parent-grouping-row child-row ${childHasChildren ? 'clickable' : ''}`}
+                        onClick={() => childHasChildren && toggleGroup(child.key)}
+                        style={{ cursor: childHasChildren ? 'pointer' : 'default' }}
+                      >
+                        <div className="parent-col-name child-indent">
+                          {childHasChildren && (
+                            <span className="expand-icon">{isChildExpanded ? '▼' : '▶'}</span>
+                          )}
+                          {child.name}
+                        </div>
+                        <div className="parent-col-type">{child.type}</div>
+                        <div className="parent-col-tickets">{child.tickets}</div>
+                        <div className="parent-col-estimated">
+                          {child.estimateHours > 0 ? child.estimateHours : '-'}
+                        </div>
+                        <div className="parent-col-guess">
+                          {child.defaultHours > 0 ? child.defaultHours : '-'}
+                        </div>
+                        <div className="parent-col-total">
+                          {child.totalHours > 0 ? child.totalHours : '-'}
+                        </div>
+                        <div className="parent-col-days">
+                          {child.totalHours > 0 ? (child.totalHours / 6).toFixed(1) : '-'}
+                        </div>
+                        <div className="parent-col-chart">
+                          <div className="parent-bar-container">
+                            <div
+                              className="parent-bar"
+                              style={{ width: `${child.totalHours > 0 ? (child.totalHours / maxParentWorkload) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+
+                      {/* Grandchild Rows */}
+                      {childHasChildren && isChildExpanded && child.children.map((grandchild, grandchildIndex) => (
+                        <div key={`${index}-${childIndex}-${grandchildIndex}`} className="parent-grouping-row grandchild-row">
+                          <div className="parent-col-name grandchild-indent">{grandchild.name}</div>
+                          <div className="parent-col-type">{grandchild.type}</div>
+                          <div className="parent-col-tickets">{grandchild.tickets}</div>
+                          <div className="parent-col-estimated">
+                            {grandchild.estimateHours > 0 ? grandchild.estimateHours : '-'}
+                          </div>
+                          <div className="parent-col-guess">
+                            {grandchild.defaultHours > 0 ? grandchild.defaultHours : '-'}
+                          </div>
+                          <div className="parent-col-total">
+                            {grandchild.totalHours > 0 ? grandchild.totalHours : '-'}
+                          </div>
+                          <div className="parent-col-days">
+                            {grandchild.totalHours > 0 ? (grandchild.totalHours / 6).toFixed(1) : '-'}
+                          </div>
+                          <div className="parent-col-chart">
+                            <div className="parent-bar-container">
+                              <div
+                                className="parent-bar"
+                                style={{ width: `${grandchild.totalHours > 0 ? (grandchild.totalHours / maxParentWorkload) * 100 : 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
               </React.Fragment>
             );
           })}
@@ -193,7 +238,7 @@ function CapacityPlanning({ data }) {
         <h3>Team Workload Distribution</h3>
         <div className="workload-table">
           <div className="workload-header">
-            <div className="workload-col-assignee">Team Member</div>
+            <div className="workload-col-assignee">Team / Assignee</div>
             <div className="workload-col-tickets">Open Tickets</div>
             <div className="workload-col-estimated">Estimated (Hrs)</div>
             <div className="workload-col-guess">Guess (Hrs)</div>

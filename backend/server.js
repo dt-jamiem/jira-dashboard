@@ -1757,7 +1757,7 @@ app.get('/api/capacity-planning', async (req, res) => {
       const requestBody = {
         jql: openTicketsJQL,
         maxResults: 50,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'parent', 'issuelinks']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'parent', 'issuelinks', 'customfield_10001', 'customfield_10083']
       };
       if (nextPageToken) {
         requestBody.nextPageToken = nextPageToken;
@@ -1886,12 +1886,45 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
     };
 
-    // Calculate assignee workload
+    // Calculate team workload (using Team field for DTI items, assignee for others)
     const assigneeWorkload = {};
+    let dtiItemCount = 0;
+    let dtiTeamsFound = new Set();
+
     openIssues.forEach(issue => {
-      const assignee = issue.fields.assignee?.displayName || 'Unassigned';
-      if (!assigneeWorkload[assignee]) {
-        assigneeWorkload[assignee] = {
+      let teamName;
+
+      // For DTI project items, use the Team field (customfield_10001)
+      if (issue.fields.project?.key === 'DTI') {
+        dtiItemCount++;
+        const teamField = issue.fields.customfield_10001;
+
+        // Debug: Print first few items to see Team field structure
+        if (dtiItemCount <= 5) {
+          console.log(`\n=== DTI item ${issue.key} ===`);
+          console.log(`  customfield_10001 (Team):`, teamField ? JSON.stringify(teamField) : 'null');
+        }
+
+        // customfield_10001 is an Atlassian Team field with structure like {"id": "UUID", "name": "Technology Operations"}
+        if (teamField && teamField.name) {
+          teamName = teamField.name;
+        } else if (teamField && typeof teamField === 'string') {
+          teamName = teamField;
+        } else {
+          teamName = 'Unassigned Team';
+        }
+
+        dtiTeamsFound.add(teamName);
+        if (dtiItemCount <= 5) {
+          console.log(`  Extracted Team Name: ${teamName}`);
+        }
+      } else {
+        // For non-DTI items, use assignee
+        teamName = issue.fields.assignee?.displayName || 'Unassigned';
+      }
+
+      if (!assigneeWorkload[teamName]) {
+        assigneeWorkload[teamName] = {
           openTickets: 0,
           byPriority: {},
           oldestTicket: null,
@@ -1903,46 +1936,52 @@ app.get('/api/capacity-planning', async (req, res) => {
           ticketsWithDefault: 0
         };
       }
-      assigneeWorkload[assignee].openTickets++;
+      assigneeWorkload[teamName].openTickets++;
 
       const priority = issue.fields.priority?.name || 'None';
-      assigneeWorkload[assignee].byPriority[priority] = (assigneeWorkload[assignee].byPriority[priority] || 0) + 1;
+      assigneeWorkload[teamName].byPriority[priority] = (assigneeWorkload[teamName].byPriority[priority] || 0) + 1;
 
       const ticketAge = Math.floor((new Date() - new Date(issue.fields.created)) / (1000 * 60 * 60 * 24));
-      assigneeWorkload[assignee].tickets.push(ticketAge);
+      assigneeWorkload[teamName].tickets.push(ticketAge);
 
-      if (!assigneeWorkload[assignee].oldestTicket || ticketAge > assigneeWorkload[assignee].oldestTicket) {
-        assigneeWorkload[assignee].oldestTicket = ticketAge;
+      if (!assigneeWorkload[teamName].oldestTicket || ticketAge > assigneeWorkload[teamName].oldestTicket) {
+        assigneeWorkload[teamName].oldestTicket = ticketAge;
       }
 
       // Track original estimates and defaults
       if (issue.fields.timeoriginalestimate) {
-        assigneeWorkload[assignee].estimateSeconds += issue.fields.timeoriginalestimate;
-        assigneeWorkload[assignee].ticketsWithEstimate++;
+        assigneeWorkload[teamName].estimateSeconds += issue.fields.timeoriginalestimate;
+        assigneeWorkload[teamName].ticketsWithEstimate++;
       } else {
         const defaultEst = getDefaultEstimate(issue);
         if (defaultEst > 0) {
-          assigneeWorkload[assignee].defaultSeconds += defaultEst;
-          assigneeWorkload[assignee].ticketsWithDefault++;
+          assigneeWorkload[teamName].defaultSeconds += defaultEst;
+          assigneeWorkload[teamName].ticketsWithDefault++;
         }
       }
     });
 
-    // Calculate average age and convert estimates to hours for each assignee
-    Object.keys(assigneeWorkload).forEach(assignee => {
-      const ages = assigneeWorkload[assignee].tickets;
+    console.log(`\nWorkload Calculation Summary:`);
+    console.log(`- Processed ${dtiItemCount} DTI items`);
+    console.log(`- DTI teams found: ${Array.from(dtiTeamsFound).join(', ')}`);
+    console.log(`- Total workload entries: ${Object.keys(assigneeWorkload).length}`);
+    console.log(`- Workload keys: ${Object.keys(assigneeWorkload).join(', ')}\n`);
+
+    // Calculate average age and convert estimates to hours for each team/assignee
+    Object.keys(assigneeWorkload).forEach(teamName => {
+      const ages = assigneeWorkload[teamName].tickets;
       if (ages.length > 0) {
-        assigneeWorkload[assignee].avgAge = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
+        assigneeWorkload[teamName].avgAge = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
       }
-      delete assigneeWorkload[assignee].tickets; // Remove the raw data
+      delete assigneeWorkload[teamName].tickets; // Remove the raw data
 
       // Convert estimates from seconds to hours
-      assigneeWorkload[assignee].estimateHours = Math.round(assigneeWorkload[assignee].estimateSeconds / 3600);
-      assigneeWorkload[assignee].defaultHours = Math.round(assigneeWorkload[assignee].defaultSeconds / 3600);
-      assigneeWorkload[assignee].totalHours = assigneeWorkload[assignee].estimateHours + assigneeWorkload[assignee].defaultHours;
+      assigneeWorkload[teamName].estimateHours = Math.round(assigneeWorkload[teamName].estimateSeconds / 3600);
+      assigneeWorkload[teamName].defaultHours = Math.round(assigneeWorkload[teamName].defaultSeconds / 3600);
+      assigneeWorkload[teamName].totalHours = assigneeWorkload[teamName].estimateHours + assigneeWorkload[teamName].defaultHours;
 
-      delete assigneeWorkload[assignee].estimateSeconds; // Remove seconds, keep hours
-      delete assigneeWorkload[assignee].defaultSeconds;
+      delete assigneeWorkload[teamName].estimateSeconds; // Remove seconds, keep hours
+      delete assigneeWorkload[teamName].defaultSeconds;
     });
 
     // Calculate resolution metrics
@@ -2185,19 +2224,30 @@ app.get('/api/capacity-planning', async (req, res) => {
             parentGroup = `${discoveryIdea.key}: ${discoveryIdea.summary}`;
           }
         }
-        // For DTI project items, group under "DTI Requests"
+        // For DTI project items, group under "DTI Requests" with team-based grouping
         else if (projectKey === 'DTI') {
-          // If has Epic parent, use Epic but group under DTI Requests
+          // Get team from custom field (customfield_10001 - Atlassian Team field)
+          const teamField = issue.fields.customfield_10001;
+          let teamName = 'Unassigned Team';
+
+          // customfield_10001 is an Atlassian Team field with structure like {"id": "UUID", "name": "Technology Operations"}
+          if (teamField && teamField.name) {
+            teamName = teamField.name;
+          } else if (teamField && typeof teamField === 'string') {
+            teamName = teamField;
+          }
+
+          // If has Epic parent, use Epic but group under Team under DTI Requests
           if (issue.fields.parent) {
             groupKey = issue.fields.parent.key;
             groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
             groupType = 'Epic';
-            parentGroup = 'DTI Requests';
+            parentGroup = `DTI-Team: ${teamName}`;
           } else {
             groupKey = `DTI-${issueTypeName}`;
             groupName = `DTI: ${issueTypeName}`;
             groupType = 'Issue Type';
-            parentGroup = 'DTI Requests';
+            parentGroup = `DTI-Team: ${teamName}`;
           }
         }
         // If issue has a parent (Epic), use that and group under project
@@ -2309,6 +2359,46 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
     });
 
+    // Fourth pass: Group DTI teams under "DTI Requests"
+    console.log('Before DTI team grouping, hierarchicalGroups:', hierarchicalGroups.map(g => ({ key: g.key, name: g.name, type: g.type, childCount: g.children?.length || 0 })));
+    const dtiTeamGroups = hierarchicalGroups.filter(g => g.key && g.key.startsWith('DTI-Team:'));
+    console.log('Found DTI team groups:', dtiTeamGroups.length, dtiTeamGroups.map(g => ({ key: g.key, name: g.name })));
+    if (dtiTeamGroups.length > 0) {
+      // Remove DTI team groups from the main array
+      dtiTeamGroups.forEach(teamGroup => {
+        const index = hierarchicalGroups.findIndex(g => g.key === teamGroup.key);
+        if (index > -1) {
+          hierarchicalGroups.splice(index, 1);
+        }
+      });
+
+      // Clean up team names (remove "DTI-Team: " prefix for display)
+      dtiTeamGroups.forEach(teamGroup => {
+        teamGroup.name = teamGroup.name.replace('DTI-Team: ', '');
+        teamGroup.type = 'Team';
+      });
+
+      // Sort teams by total hours
+      dtiTeamGroups.sort((a, b) => b.totalHours - a.totalHours);
+
+      // Calculate totals for DTI Requests
+      const dtiTotals = dtiTeamGroups.reduce((acc, team) => ({
+        tickets: acc.tickets + team.tickets,
+        estimateHours: acc.estimateHours + team.estimateHours,
+        defaultHours: acc.defaultHours + team.defaultHours,
+        totalHours: acc.totalHours + team.totalHours
+      }), { tickets: 0, estimateHours: 0, defaultHours: 0, totalHours: 0 });
+
+      // Add DTI Requests as parent with teams as children
+      hierarchicalGroups.push({
+        key: 'DTI Requests',
+        name: 'DTI Requests',
+        type: 'Project Group',
+        ...dtiTotals,
+        children: dtiTeamGroups
+      });
+    }
+
     // Filter out "Issue Type" groups
     const filteredGroups = hierarchicalGroups.filter(group => group.type !== 'Issue Type');
 
@@ -2378,6 +2468,39 @@ app.get('/api/capacity-planning', async (req, res) => {
       error: 'Failed to fetch capacity planning data',
       details: error.response?.data || error.message
     });
+  }
+});
+
+// DEBUG: Temporary endpoint to find Team field
+app.get('/api/debug-fields', async (req, res) => {
+  try {
+    const response = await jiraAPI.get('/field');
+    const allFields = response.data;
+
+    console.log('\n=== ALL JIRA FIELDS ===');
+    console.log(`Total fields: ${allFields.length}`);
+
+    // Find fields with "team" in the name or key
+    const teamFields = allFields.filter(f =>
+      (f.name && f.name.toLowerCase().includes('team')) ||
+      (f.key && f.key.toLowerCase().includes('team')) ||
+      (f.clauseNames && f.clauseNames.some(cn => cn.toLowerCase().includes('team')))
+    );
+
+    console.log('\n=== TEAM-RELATED FIELDS ===');
+    teamFields.forEach(f => {
+      console.log(`\nField: ${f.name}`);
+      console.log(`  ID: ${f.id}`);
+      console.log(`  Key: ${f.key}`);
+      console.log(`  Custom: ${f.custom}`);
+      console.log(`  ClauseNames: ${f.clauseNames ? f.clauseNames.join(', ') : 'none'}`);
+      console.log(`  Schema: ${JSON.stringify(f.schema)}`);
+    });
+
+    res.json({ totalFields: allFields.length, teamFields });
+  } catch (error) {
+    console.error('Error fetching fields:', error.response?.data || error.message);
+    res.status(500).json({ error: error.response?.data || error.message });
   }
 });
 
