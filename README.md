@@ -4,6 +4,17 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 
 ## Recent Updates
 
+### January 2026
+- **Capacity Planning Dashboard**: Added comprehensive capacity planning with team-based workload analysis (January 14, 2026)
+  - Three-level hierarchical grouping for DTI Requests: DTI Requests > Teams > Epics/Items
+  - Team-based workload calculation for DTI project using Atlassian Team field (customfield_10001)
+  - Summary cards showing total workload, team velocity, completion forecast, and flow analysis
+  - Workload by Assignee table with ticket counts, story point totals, and capacity days calculation
+  - Parent Grouping view with expand/collapse functionality for hierarchical ticket organization
+  - Cumulative flow chart tracking created vs resolved tickets over time
+  - Capacity insights with dynamic analysis of workload distribution and forecasting
+  - Debug endpoint `/api/debug-fields` for Jira field discovery and troubleshooting
+
 ### December 2025
 - **Three-Tab Dashboard Structure**: Reorganized dashboard for clearer separation of analytics and trends (December 11, 2025)
   - Service Desk tab: Analytics overview with 4 summary tiles and key insights
@@ -78,7 +89,7 @@ This filtering is applied across all dashboard sections and metrics.
 
 ## Features
 
-The dashboard is organized into three main tabs:
+The dashboard is organized into five main tabs:
 
 ### Service Desk Tab (Default)
 - **Service Desk Analytics**: Comprehensive analytics dashboard showing detailed service desk insights (last 30 days)
@@ -103,6 +114,25 @@ The dashboard is organized into three main tabs:
 - **DevOps Service Desk Trends**: Dedicated view for DevOps team service desk tickets with metrics and 30-day trend graphs
   - Same conditional formatting and targets as Service Desk tab
 - **DevOps Open Tickets Age Trend**: Tracks the average age of open DevOps tickets over time with current metrics and 30-day trend visualization
+
+### Capacity Planning Tab
+- **Capacity Planning Dashboard**: Comprehensive team-based workload analysis and forecasting (last 30 days)
+  - **Summary Cards**: Total story points, team velocity, completion forecast, and cumulative flow metrics
+  - **Workload by Assignee**: Table showing each team member's workload with:
+    - Total tickets (with breakdown of estimated vs unestimated)
+    - Story points (estimated + guessed for unestimated tickets)
+    - Capacity days calculation based on velocity
+    - Ticket aging analysis with warnings for tickets older than 30 days
+    - Visual progress bars showing relative workload
+  - **Parent Grouping**: Three-level hierarchical view with expand/collapse functionality:
+    - **Level 1**: DTI Requests grouped by internal team (Technology Operations, DBA, etc.)
+    - **Level 2**: Teams containing related Epics or issue types
+    - **Level 3**: Individual Epics with their constituent tickets
+    - Team assignments extracted from Atlassian Team field (customfield_10001)
+    - Click to expand/collapse groups for detailed exploration
+  - **Cumulative Flow Chart**: Line graph tracking created vs resolved tickets over the 30-day period
+  - **Capacity Insights**: Dynamic analysis cards showing workload distribution, bottlenecks, and forecasting
+  - Uses team-based workload calculation for DTI project items via customfield_10001
 
 ## Prerequisites
 
@@ -131,7 +161,9 @@ jira-dashboard/
     │   │   ├── DevOpsAnalytics.js
     │   │   ├── DevOpsAnalytics.css
     │   │   ├── DevOpsServiceDesk.js
-    │   │   └── DevOpsOpenTicketsAge.js
+    │   │   ├── DevOpsOpenTicketsAge.js
+    │   │   ├── CapacityPlanning.js
+    │   │   └── CapacityPlanning.css
     │   ├── App.js
     │   ├── App.css
     │   └── index.js
@@ -189,6 +221,8 @@ The backend provides the following endpoints:
 - `GET /api/service-desk-trends-devops?days=30` - Get service desk trends for DevOps team only (default: 30 days)
 - `GET /api/devops-analytics?days=30` - Get combined DevOps analytics with trends and open tickets age data (default: 30 days)
 - `GET /api/devops-open-tickets-age?days=30` - Get average age trend of open DevOps tickets (default: 30 days)
+- `GET /api/capacity-planning?days=30` - Get comprehensive capacity planning data with team-based workload analysis and hierarchical grouping (default: 30 days)
+- `GET /api/debug-fields` - Debug endpoint to query all Jira field metadata and identify team-related fields (useful for troubleshooting custom field mappings)
 
 ## Dashboard Sections
 
@@ -259,6 +293,80 @@ Tracks the average age of currently open DevOps tickets:
 - 30-day trend line showing how average age has changed over time
 - Status breakdown of open tickets
 - Uses `statusCategory != Done` for accurate open ticket filtering
+
+### Capacity Planning Tab
+
+#### Capacity Planning Dashboard
+Comprehensive team-based workload analysis and forecasting dashboard (last 30 days):
+
+**Summary Cards:**
+- **Total Workload**: Combined story points from all team members (estimated + guessed for unestimated tickets)
+- **Team Velocity**: Average story points completed per day based on the 30-day period
+- **Completion Forecast**: Estimated days to complete current workload at current velocity
+- **Cumulative Flow**: Net change in open tickets (created vs resolved) over the period
+
+**Workload by Assignee:**
+A detailed table showing each team member's current workload:
+- **Assignee**: Team member name
+- **Tickets**: Total ticket count with breakdown of estimated vs unestimated tickets
+- **Estimated SP**: Story points for tickets with estimates
+- **Guess SP**: Estimated story points for unestimated tickets (based on 8 SP average)
+- **Total SP**: Combined story points (estimated + guessed)
+- **Capacity Days**: Estimated days to complete workload based on team velocity
+- **Avg Age**: Average age of tickets in days
+- **Oldest Ticket**: Age of oldest ticket with warning indicator for tickets > 30 days
+- **Visual Chart**: Progress bar showing relative workload distribution
+
+**Parent Grouping - Three-Level Hierarchy:**
+The Parent Grouping section provides a hierarchical view of tickets organized into three levels with expand/collapse functionality:
+
+1. **Level 1 - DTI Requests by Team**: Top-level grouping showing internal teams
+   - Teams extracted from Atlassian Team field (customfield_10001)
+   - Examples: "Technology Operations", "DBA", etc.
+   - Displays team name with expand icon
+   - Shows aggregated metrics for all items in the team
+
+2. **Level 2 - Epics or Issue Types**: Mid-level grouping under each team
+   - Epics when available (e.g., "DTI-1234: Enhance Database Performance")
+   - Issue types for non-epic items (e.g., "DTI: Task", "DTI: Story")
+   - Indented 2rem from left for visual hierarchy
+   - Click to expand/collapse epic details
+
+3. **Level 3 - Individual Tickets**: Lowest-level items
+   - Individual tickets within each epic or issue type group
+   - Shows ticket key and summary
+   - Indented 4rem from left for clear hierarchy
+   - Displays individual ticket metrics (story points, days, etc.)
+
+Each level displays:
+- Issue type or group name
+- Ticket count (estimated + unestimated breakdown)
+- Story points (estimated, guessed, total)
+- Capacity days
+- Visual progress bar
+
+**Team-Based Workload Calculation:**
+- **DTI Project Items**: Uses Atlassian Team field (customfield_10001) for team assignment
+  - Field structure: `{"id": "UUID", "name": "Technology Operations"}`
+  - Extracts team name from `customfield_10001.name`
+  - Groups all DTI items by their assigned team
+- **Other Projects**: Uses assignee display name for workload calculation
+- Maintains consistent metrics and visualization across both approaches
+
+**Cumulative Flow Chart:**
+A line graph showing ticket flow over the 30-day period:
+- Created tickets line (green) showing new work incoming
+- Resolved tickets line (dark gray) showing work completed
+- X-axis: 30-day date range
+- Y-axis: Cumulative ticket count
+- Helps identify trends in backlog growth or reduction
+
+**Capacity Insights:**
+Dynamic analysis cards showing:
+- Workload distribution across team members
+- Bottleneck identification
+- Completion time forecasting
+- Team capacity utilization
 
 ## Design & Branding
 
@@ -355,6 +463,34 @@ Note: The queries fetch tickets that were created OR resolved in the period, plu
 ### Chart Display Issues
 - Ensure Recharts is properly installed: `npm install recharts`
 - Check browser console for errors
+
+### Jira Custom Field Mapping Issues
+
+If you encounter issues with team names or other custom fields not displaying correctly:
+
+1. **Use the Debug Endpoint**: Navigate to `http://localhost:5000/api/debug-fields` to view all available Jira fields
+   - The endpoint returns all field metadata including IDs, names, clause names, and schemas
+   - Search the output for fields related to your data (e.g., "team", "assignee", etc.)
+
+2. **Identify the Correct Field**:
+   - Look for the `clauseNames` property to match JQL query syntax
+   - Example: If your JQL uses `"Team[Team]"`, look for a field with that clause name
+   - The field ID will be something like `customfield_10001`
+
+3. **Common Custom Fields**:
+   - `customfield_10001`: Atlassian Team field (structure: `{"id": "UUID", "name": "Team Name"}`)
+   - `customfield_10083`: Often used for project/client categorization (array format)
+   - Other custom fields may vary by Jira instance
+
+4. **Update the Backend Code**:
+   - In `backend/server.js`, update the fields array around line 1760 to include your custom field
+   - Update team extraction logic in the capacity planning endpoint (around lines 1897-1920)
+   - For team fields, extract the name from the field structure: `teamField.name`
+
+5. **Test Your Changes**:
+   - Restart the backend server
+   - Check the browser console and backend logs for any field-related errors
+   - Verify team names display correctly in the Capacity Planning dashboard
 
 ## Technologies Used
 
