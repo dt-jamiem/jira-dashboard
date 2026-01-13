@@ -1749,36 +1749,71 @@ app.get('/api/capacity-planning', async (req, res) => {
     // Base JQL for capacity planning - aligned with dashboard filters
     const baseJQL = '(Project IN (DEVOPS, TechOps, "Technology Group", "Technology Roadmap") OR (Project = DTI AND "Team[Team]" IN (01c3b859-1307-41e3-8a88-24c701dd1713, 9888ca76-8551-47b3-813f-4bf5df9e9762, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72)))';
 
-    // Fetch open tickets for current workload
+    // Fetch open tickets for current workload with pagination
     const openTicketsJQL = `${baseJQL} AND statusCategory NOT IN (Done) ORDER BY created DESC`;
-
-    // Fetch recently created tickets for trend analysis
-    const recentTicketsJQL = `${baseJQL} AND created >= "${dateStr}" ORDER BY created DESC`;
-
-    // Fetch recently resolved tickets
-    const resolvedTicketsJQL = `${baseJQL} AND statusCategory IN (Done) AND resolutiondate >= "${dateStr}" ORDER BY resolutiondate DESC`;
-
-    const [openResponse, recentResponse, resolvedResponse] = await Promise.all([
-      jiraAPI.post('/search/jql', {
+    let openIssues = [];
+    let nextPageToken = null;
+    do {
+      const requestBody = {
         jql: openTicketsJQL,
-        maxResults: 1000,
+        maxResults: 50,
         fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
-      }),
-      jiraAPI.post('/search/jql', {
-        jql: recentTicketsJQL,
-        maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
-      }),
-      jiraAPI.post('/search/jql', {
-        jql: resolvedTicketsJQL,
-        maxResults: 1000,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
-      })
-    ]);
+      };
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+      const response = await jiraAPI.post('/search/jql', requestBody);
+      openIssues = openIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+      console.log(`Fetched ${response.data.issues?.length || 0} open tickets, total so far: ${openIssues.length}, isLast: ${response.data.isLast}`);
+      if (response.data.isLast || openIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
 
-    const openIssues = openResponse.data.issues;
-    const recentIssues = recentResponse.data.issues;
-    const resolvedIssues = resolvedResponse.data.issues;
+    // Fetch recently created tickets with pagination
+    const recentTicketsJQL = `${baseJQL} AND created >= "${dateStr}" ORDER BY created DESC`;
+    let recentIssues = [];
+    nextPageToken = null;
+    do {
+      const requestBody = {
+        jql: recentTicketsJQL,
+        maxResults: 50,
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
+      };
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+      const response = await jiraAPI.post('/search/jql', requestBody);
+      recentIssues = recentIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+      if (response.data.isLast || recentIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    // Fetch recently resolved tickets with pagination
+    const resolvedTicketsJQL = `${baseJQL} AND statusCategory IN (Done) AND resolutiondate >= "${dateStr}" ORDER BY resolutiondate DESC`;
+    let resolvedIssues = [];
+    nextPageToken = null;
+    do {
+      const requestBody = {
+        jql: resolvedTicketsJQL,
+        maxResults: 50,
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
+      };
+      if (nextPageToken) {
+        requestBody.nextPageToken = nextPageToken;
+      }
+      const response = await jiraAPI.post('/search/jql', requestBody);
+      resolvedIssues = resolvedIssues.concat(response.data.issues || []);
+      nextPageToken = response.data.nextPageToken;
+      if (response.data.isLast || resolvedIssues.length >= 5000) {
+        break;
+      }
+    } while (nextPageToken);
+
+    console.log(`Capacity Planning: Collected ${openIssues.length} open tickets, ${recentIssues.length} recent tickets, ${resolvedIssues.length} resolved tickets`);
 
     // Helper function to calculate default estimate
     const getDefaultEstimate = (issue) => {
