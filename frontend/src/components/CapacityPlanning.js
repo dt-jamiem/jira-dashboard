@@ -24,6 +24,104 @@ function CapacityPlanning({ data }) {
     }));
   };
 
+  // Helper function to render a parent grouping table section
+  const renderGroupingSection = (groups, sectionTitle) => {
+    if (!groups || groups.length === 0) return null;
+
+    const maxParentWorkload = Math.max(...groups.map(g => g.totalHours || 0), 1);
+
+    return (
+      <div className="capacity-section">
+        <h3>{sectionTitle}</h3>
+        <div className="parent-grouping-table">
+          <div className="parent-grouping-header">
+            <div className="parent-col-name">Epic / Type</div>
+            <div className="parent-col-type">Group Type</div>
+            <div className="parent-col-tickets">Open Tickets</div>
+            <div className="parent-col-estimated">Estimated (Hrs)</div>
+            <div className="parent-col-guess">Guess (Hrs)</div>
+            <div className="parent-col-total">Potential Total (Hrs)</div>
+            <div className="parent-col-days">Potential Effort (Days)</div>
+            <div className="parent-col-chart">Load</div>
+          </div>
+          {groups.map((group, index) => {
+            const hasChildren = group.children && group.children.length > 0;
+            const isExpanded = expandedGroups[group.key];
+
+            return (
+              <React.Fragment key={index}>
+                {/* Parent/Group Row */}
+                <div
+                  className={`parent-grouping-row ${hasChildren ? 'parent-group clickable' : ''}`}
+                  onClick={() => hasChildren && toggleGroup(group.key)}
+                  style={{ cursor: hasChildren ? 'pointer' : 'default' }}
+                >
+                  <div className="parent-col-name">
+                    {hasChildren && (
+                      <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                    )}
+                    {group.name}
+                  </div>
+                  <div className="parent-col-type">{group.type}</div>
+                  <div className="parent-col-tickets">{group.tickets}</div>
+                  <div className="parent-col-estimated">
+                    {group.estimateHours > 0 ? group.estimateHours : '-'}
+                  </div>
+                  <div className="parent-col-guess">
+                    {group.defaultHours > 0 ? group.defaultHours : '-'}
+                  </div>
+                  <div className="parent-col-total">
+                    {group.totalHours > 0 ? group.totalHours : '-'}
+                  </div>
+                  <div className="parent-col-days">
+                    {group.totalHours > 0 ? (group.totalHours / 6).toFixed(1) : '-'}
+                  </div>
+                  <div className="parent-col-chart">
+                    <div className="parent-bar-container">
+                      <div
+                        className="parent-bar"
+                        style={{ width: `${group.totalHours > 0 ? (group.totalHours / maxParentWorkload) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Child Rows */}
+                {hasChildren && isExpanded && group.children.map((child, childIndex) => (
+                  <div key={`${index}-${childIndex}`} className="parent-grouping-row child-row">
+                    <div className="parent-col-name child-indent">{child.name}</div>
+                    <div className="parent-col-type">{child.type}</div>
+                    <div className="parent-col-tickets">{child.tickets}</div>
+                    <div className="parent-col-estimated">
+                      {child.estimateHours > 0 ? child.estimateHours : '-'}
+                    </div>
+                    <div className="parent-col-guess">
+                      {child.defaultHours > 0 ? child.defaultHours : '-'}
+                    </div>
+                    <div className="parent-col-total">
+                      {child.totalHours > 0 ? child.totalHours : '-'}
+                    </div>
+                    <div className="parent-col-days">
+                      {child.totalHours > 0 ? (child.totalHours / 6).toFixed(1) : '-'}
+                    </div>
+                    <div className="parent-col-chart">
+                      <div className="parent-bar-container">
+                        <div
+                          className="parent-bar"
+                          style={{ width: `${child.totalHours > 0 ? (child.totalHours / maxParentWorkload) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   // Calculate max values for bar chart scaling (using total hours including defaults)
   const maxWorkload = Math.max(...assigneeWorkload.map(a => a.totalHours || 0), 1);
 
@@ -137,97 +235,13 @@ function CapacityPlanning({ data }) {
         </div>
       </div>
 
-      {/* Parent Grouping */}
-      {parentGrouping && parentGrouping.length > 0 && (
-        <div className="capacity-section">
-          <h3>Work by Epic / Project Type</h3>
-          <div className="parent-grouping-table">
-            <div className="parent-grouping-header">
-              <div className="parent-col-name">Epic / Type</div>
-              <div className="parent-col-type">Group Type</div>
-              <div className="parent-col-tickets">Open Tickets</div>
-              <div className="parent-col-estimated">Estimated (Hrs)</div>
-              <div className="parent-col-guess">Guess (Hrs)</div>
-              <div className="parent-col-total">Potential Total (Hrs)</div>
-              <div className="parent-col-days">Potential Effort (Days)</div>
-              <div className="parent-col-chart">Load</div>
-            </div>
-            {parentGrouping.map((group, index) => {
-              const maxParentWorkload = Math.max(...parentGrouping.map(g => g.totalHours || 0), 1);
-              const hasChildren = group.children && group.children.length > 0;
-              const isExpanded = expandedGroups[group.key];
-
-              return (
-                <React.Fragment key={index}>
-                  {/* Parent/Group Row */}
-                  <div
-                    className={`parent-grouping-row ${hasChildren ? 'parent-group clickable' : ''}`}
-                    onClick={() => hasChildren && toggleGroup(group.key)}
-                    style={{ cursor: hasChildren ? 'pointer' : 'default' }}
-                  >
-                    <div className="parent-col-name">
-                      {hasChildren && (
-                        <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
-                      )}
-                      {group.name}
-                    </div>
-                    <div className="parent-col-type">{group.type}</div>
-                    <div className="parent-col-tickets">{group.tickets}</div>
-                    <div className="parent-col-estimated">
-                      {group.estimateHours > 0 ? group.estimateHours : '-'}
-                    </div>
-                    <div className="parent-col-guess">
-                      {group.defaultHours > 0 ? group.defaultHours : '-'}
-                    </div>
-                    <div className="parent-col-total">
-                      {group.totalHours > 0 ? group.totalHours : '-'}
-                    </div>
-                    <div className="parent-col-days">
-                      {group.totalHours > 0 ? (group.totalHours / 6).toFixed(1) : '-'}
-                    </div>
-                    <div className="parent-col-chart">
-                      <div className="parent-bar-container">
-                        <div
-                          className="parent-bar"
-                          style={{ width: `${group.totalHours > 0 ? (group.totalHours / maxParentWorkload) * 100 : 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Child Rows */}
-                  {hasChildren && isExpanded && group.children.map((child, childIndex) => (
-                    <div key={`${index}-${childIndex}`} className="parent-grouping-row child-row">
-                      <div className="parent-col-name child-indent">{child.name}</div>
-                      <div className="parent-col-type">{child.type}</div>
-                      <div className="parent-col-tickets">{child.tickets}</div>
-                      <div className="parent-col-estimated">
-                        {child.estimateHours > 0 ? child.estimateHours : '-'}
-                      </div>
-                      <div className="parent-col-guess">
-                        {child.defaultHours > 0 ? child.defaultHours : '-'}
-                      </div>
-                      <div className="parent-col-total">
-                        {child.totalHours > 0 ? child.totalHours : '-'}
-                      </div>
-                      <div className="parent-col-days">
-                        {child.totalHours > 0 ? (child.totalHours / 6).toFixed(1) : '-'}
-                      </div>
-                      <div className="parent-col-chart">
-                        <div className="parent-bar-container">
-                          <div
-                            className="parent-bar"
-                            style={{ width: `${child.totalHours > 0 ? (child.totalHours / maxParentWorkload) * 100 : 0}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
+      {/* Work Categories */}
+      {parentGrouping && (
+        <>
+          {renderGroupingSection(parentGrouping.bau, 'Bucket 1: BAU')}
+          {renderGroupingSection(parentGrouping.deliver, 'Bucket 2: Deliver')}
+          {renderGroupingSection(parentGrouping.improve, 'Bucket 3: Improve')}
+        </>
       )}
 
       {/* Ticket Flow Chart */}

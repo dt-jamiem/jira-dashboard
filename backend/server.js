@@ -2282,16 +2282,19 @@ app.get('/api/capacity-planning', async (req, res) => {
       });
     });
 
-    // Third pass: add Discovery Ideas from Technology Roadmap
+    // Third pass: add Discovery Ideas from Technology Roadmap and update their type
     // These should appear as parent groups even if they don't have linked work items
     discoveryIdeas.forEach(idea => {
       const ideaKey = idea.key;
       const ideaName = `${idea.key}: ${idea.fields.summary}`;
-      const ideaType = idea.fields.issuetype?.name || 'Discovery Idea';
+      const ideaType = 'Initiative';
 
       // Check if this Discovery Idea already exists (has children)
-      const existingGroup = hierarchicalGroups.find(g => g.name === ideaName);
-      if (!existingGroup) {
+      const existingGroup = hierarchicalGroups.find(g => g.name === ideaName || g.key === ideaKey);
+      if (existingGroup) {
+        // Update the type to Initiative if it already exists
+        existingGroup.type = ideaType;
+      } else {
         // Add as a new parent group with no children
         hierarchicalGroups.push({
           key: ideaKey,
@@ -2306,10 +2309,35 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
     });
 
-    // Filter out "Issue Type" groups and sort by total hours descending
-    const sortedParentGroups = hierarchicalGroups
-      .filter(group => group.type !== 'Issue Type')
-      .sort((a, b) => b.totalHours - a.totalHours);
+    // Filter out "Issue Type" groups
+    const filteredGroups = hierarchicalGroups.filter(group => group.type !== 'Issue Type');
+
+    // Categorize groups into three sections
+    const bauGroups = filteredGroups.filter(group =>
+      group.name === 'DTI Requests' || group.key === 'DTI Requests'
+    ).sort((a, b) => b.totalHours - a.totalHours);
+
+    // Helper function to check if a group or its children are Initiatives
+    const isInitiativeRelated = (group) => {
+      // Check if group itself is an Initiative
+      if (group.type === 'Initiative') return true;
+      // Check if any children are Initiatives
+      if (group.children && group.children.length > 0) {
+        return group.children.some(child => child.type === 'Initiative');
+      }
+      return false;
+    };
+
+    const improveGroups = filteredGroups.filter(group =>
+      isInitiativeRelated(group)
+    ).sort((a, b) => b.totalHours - a.totalHours);
+
+    const deliverGroups = filteredGroups.filter(group => {
+      // Everything that's not BAU or Improve goes into Deliver
+      const isBau = group.name === 'DTI Requests' || group.key === 'DTI Requests';
+      const isImprove = isInitiativeRelated(group);
+      return !isBau && !isImprove;
+    }).sort((a, b) => b.totalHours - a.totalHours);
 
     res.json({
       summary: {
@@ -2337,7 +2365,11 @@ app.get('/api/capacity-planning', async (req, res) => {
       },
       assigneeWorkload: sortedAssignees,
       ticketFlow: flowData,
-      parentGrouping: sortedParentGroups
+      parentGrouping: {
+        bau: bauGroups,
+        deliver: deliverGroups,
+        improve: improveGroups
+      }
     });
 
   } catch (error) {
