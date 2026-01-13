@@ -108,7 +108,7 @@
 
 .workload-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr 1.4fr 1.6fr 2fr;
   background: linear-gradient(135deg, #323E48 0%, #44546A 100%);
   color: white;
   padding: 0.875rem 1rem;
@@ -116,9 +116,17 @@
   font-size: 0.9rem;
 }
 
+.workload-header .workload-col-tickets,
+.workload-header .workload-col-estimated,
+.workload-header .workload-col-guess,
+.workload-header .workload-col-total,
+.workload-header .workload-col-days {
+  color: white;
+}
+
 .workload-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr 1.4fr 1.6fr 2fr;
   padding: 0.875rem 1rem;
   border-bottom: 1px solid #e0e0e0;
   transition: background-color 0.2s ease;
@@ -150,10 +158,28 @@
   font-weight: normal;
 }
 
-.workload-col-estimate {
+.workload-col-estimated {
+  text-align: center;
+  font-weight: 600;
+  color: #44546A;
+}
+
+.workload-col-guess {
+  text-align: center;
+  font-weight: 600;
+  color: #6B778C;
+}
+
+.workload-col-total {
   text-align: center;
   font-weight: 600;
   color: #A9DE33;
+}
+
+.workload-col-days {
+  text-align: center;
+  font-weight: 600;
+  color: #FF9800;
 }
 
 .workload-col-age,
@@ -180,6 +206,133 @@
 }
 
 .workload-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #A9DE33 0%, #98CC2E 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Parent Grouping Table */
+.parent-grouping-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.parent-grouping-header {
+  display: grid;
+  grid-template-columns: 3fr 1.2fr 1.2fr 1.2fr 1fr 1.4fr 1.6fr 2fr;
+  background: linear-gradient(135deg, #323E48 0%, #44546A 100%);
+  color: white;
+  padding: 0.875rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.parent-grouping-header .parent-col-tickets,
+.parent-grouping-header .parent-col-estimated,
+.parent-grouping-header .parent-col-guess,
+.parent-grouping-header .parent-col-total,
+.parent-grouping-header .parent-col-days {
+  color: white;
+}
+
+.parent-grouping-row {
+  display: grid;
+  grid-template-columns: 3fr 1.2fr 1.2fr 1.2fr 1fr 1.4fr 1.6fr 2fr;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s ease;
+  align-items: center;
+}
+
+.parent-grouping-row:hover {
+  background-color: #f5f7fa;
+}
+
+.parent-grouping-row:last-child {
+  border-bottom: none;
+}
+
+.parent-grouping-row.parent-group {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  border-top: 2px solid #A9DE33;
+}
+
+.parent-grouping-row.parent-group:hover {
+  background-color: #e8ecf0;
+}
+
+.parent-grouping-row.child-row {
+  background-color: #fafbfc;
+}
+
+.parent-grouping-row.child-row:hover {
+  background-color: #f0f3f6;
+}
+
+.parent-col-name {
+  font-weight: 500;
+  color: #323E48;
+}
+
+.parent-col-name.child-indent {
+  padding-left: 2rem;
+  font-weight: 400;
+  color: #6B778C;
+}
+
+.parent-col-type {
+  text-align: center;
+  color: #6B778C;
+  font-size: 0.85rem;
+}
+
+.parent-col-tickets {
+  text-align: center;
+  font-weight: 600;
+  color: #44546A;
+}
+
+.parent-col-estimated {
+  text-align: center;
+  font-weight: 600;
+  color: #44546A;
+}
+
+.parent-col-guess {
+  text-align: center;
+  font-weight: 600;
+  color: #6B778C;
+}
+
+.parent-col-total {
+  text-align: center;
+  font-weight: 600;
+  color: #A9DE33;
+}
+
+.parent-col-days {
+  text-align: center;
+  font-weight: 600;
+  color: #FF9800;
+}
+
+.parent-col-chart {
+  padding-left: 1rem;
+}
+
+.parent-bar-container {
+  width: 100%;
+  height: 24px;
+  background-color: #E7E6E6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.parent-bar {
   height: 100%;
   background: linear-gradient(90deg, #A9DE33 0%, #98CC2E 100%);
   border-radius: 4px;
@@ -313,12 +466,26 @@
 
   .workload-header,
   .workload-row {
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1.4fr;
     font-size: 0.85rem;
   }
 
   .workload-col-chart,
-  .workload-col-age {
+  .workload-col-guess,
+  .workload-col-estimated {
+    display: none;
+  }
+
+  .parent-grouping-header,
+  .parent-grouping-row {
+    grid-template-columns: 2fr 1fr 1fr 1.4fr;
+    font-size: 0.85rem;
+  }
+
+  .parent-col-chart,
+  .parent-col-guess,
+  .parent-col-estimated,
+  .parent-col-type {
     display: none;
   }
 
@@ -334,10 +501,22 @@
 
   .workload-header,
   .workload-row {
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1.4fr;
   }
 
-  .workload-col-oldest {
+  .workload-col-estimated,
+  .workload-col-guess {
+    display: none;
+  }
+
+  .parent-grouping-header,
+  .parent-grouping-row {
+    grid-template-columns: 2fr 1fr 1.4fr;
+  }
+
+  .parent-col-estimated,
+  .parent-col-guess,
+  .parent-col-type {
     display: none;
   }
 }

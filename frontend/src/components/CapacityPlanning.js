@@ -13,7 +13,7 @@ function CapacityPlanning({ data }) {
     );
   }
 
-  const { summary, assigneeWorkload, ticketFlow} = data;
+  const { summary, assigneeWorkload, ticketFlow, parentGrouping} = data;
 
   // Calculate max values for bar chart scaling (using total hours including defaults)
   const maxWorkload = Math.max(...assigneeWorkload.map(a => a.totalHours || 0), 1);
@@ -88,9 +88,10 @@ function CapacityPlanning({ data }) {
           <div className="workload-header">
             <div className="workload-col-assignee">Team Member</div>
             <div className="workload-col-tickets">Open Tickets</div>
-            <div className="workload-col-estimate">Estimate (hrs)</div>
-            <div className="workload-col-age">Avg Age</div>
-            <div className="workload-col-oldest">Oldest</div>
+            <div className="workload-col-estimated">Estimated (Hrs)</div>
+            <div className="workload-col-guess">Guess (Hrs)</div>
+            <div className="workload-col-total">Potential Total (Hrs)</div>
+            <div className="workload-col-days">Potential Effort (Days)</div>
             <div className="workload-col-chart">Load</div>
           </div>
           {assigneeWorkload.slice(0, 15).map((assignee, index) => (
@@ -102,14 +103,17 @@ function CapacityPlanning({ data }) {
                   <span className="estimated-count"> ({assignee.ticketsWithEstimate})</span>
                 )}
               </div>
-              <div className="workload-col-estimate">
-                {assignee.totalHours > 0 ? `${assignee.totalHours} (${assignee.estimateHours}+${assignee.defaultHours})` : '-'}
+              <div className="workload-col-estimated">
+                {assignee.estimateHours > 0 ? assignee.estimateHours : '-'}
               </div>
-              <div className="workload-col-age">{assignee.avgAge} days</div>
-              <div className="workload-col-oldest">
-                <span className={assignee.oldestTicket > 30 ? 'age-warning' : ''}>
-                  {assignee.oldestTicket} days
-                </span>
+              <div className="workload-col-guess">
+                {assignee.defaultHours > 0 ? assignee.defaultHours : '-'}
+              </div>
+              <div className="workload-col-total">
+                {assignee.totalHours > 0 ? assignee.totalHours : '-'}
+              </div>
+              <div className="workload-col-days">
+                {assignee.totalHours > 0 ? (assignee.totalHours / 6).toFixed(1) : '-'}
               </div>
               <div className="workload-col-chart">
                 <div className="workload-bar-container">
@@ -123,6 +127,89 @@ function CapacityPlanning({ data }) {
           ))}
         </div>
       </div>
+
+      {/* Parent Grouping */}
+      {parentGrouping && parentGrouping.length > 0 && (
+        <div className="capacity-section">
+          <h3>Work by Epic / Project Type</h3>
+          <div className="parent-grouping-table">
+            <div className="parent-grouping-header">
+              <div className="parent-col-name">Epic / Type</div>
+              <div className="parent-col-type">Group Type</div>
+              <div className="parent-col-tickets">Open Tickets</div>
+              <div className="parent-col-estimated">Estimated (Hrs)</div>
+              <div className="parent-col-guess">Guess (Hrs)</div>
+              <div className="parent-col-total">Potential Total (Hrs)</div>
+              <div className="parent-col-days">Potential Effort (Days)</div>
+              <div className="parent-col-chart">Load</div>
+            </div>
+            {parentGrouping.map((group, index) => {
+              const maxParentWorkload = Math.max(...parentGrouping.map(g => g.totalHours || 0), 1);
+              const hasChildren = group.children && group.children.length > 0;
+
+              return (
+                <React.Fragment key={index}>
+                  {/* Parent/Group Row */}
+                  <div className={`parent-grouping-row ${hasChildren ? 'parent-group' : ''}`}>
+                    <div className="parent-col-name">{group.name}</div>
+                    <div className="parent-col-type">{group.type}</div>
+                    <div className="parent-col-tickets">{group.tickets}</div>
+                    <div className="parent-col-estimated">
+                      {group.estimateHours > 0 ? group.estimateHours : '-'}
+                    </div>
+                    <div className="parent-col-guess">
+                      {group.defaultHours > 0 ? group.defaultHours : '-'}
+                    </div>
+                    <div className="parent-col-total">
+                      {group.totalHours > 0 ? group.totalHours : '-'}
+                    </div>
+                    <div className="parent-col-days">
+                      {group.totalHours > 0 ? (group.totalHours / 6).toFixed(1) : '-'}
+                    </div>
+                    <div className="parent-col-chart">
+                      <div className="parent-bar-container">
+                        <div
+                          className="parent-bar"
+                          style={{ width: `${group.totalHours > 0 ? (group.totalHours / maxParentWorkload) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Child Rows */}
+                  {hasChildren && group.children.map((child, childIndex) => (
+                    <div key={`${index}-${childIndex}`} className="parent-grouping-row child-row">
+                      <div className="parent-col-name child-indent">{child.name}</div>
+                      <div className="parent-col-type">{child.type}</div>
+                      <div className="parent-col-tickets">{child.tickets}</div>
+                      <div className="parent-col-estimated">
+                        {child.estimateHours > 0 ? child.estimateHours : '-'}
+                      </div>
+                      <div className="parent-col-guess">
+                        {child.defaultHours > 0 ? child.defaultHours : '-'}
+                      </div>
+                      <div className="parent-col-total">
+                        {child.totalHours > 0 ? child.totalHours : '-'}
+                      </div>
+                      <div className="parent-col-days">
+                        {child.totalHours > 0 ? (child.totalHours / 6).toFixed(1) : '-'}
+                      </div>
+                      <div className="parent-col-chart">
+                        <div className="parent-bar-container">
+                          <div
+                            className="parent-bar"
+                            style={{ width: `${child.totalHours > 0 ? (child.totalHours / maxParentWorkload) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Ticket Flow Chart */}
       <div className="capacity-section">

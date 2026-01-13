@@ -1757,7 +1757,7 @@ app.get('/api/capacity-planning', async (req, res) => {
       const requestBody = {
         jql: openTicketsJQL,
         maxResults: 50,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'parent', 'issuelinks']
       };
       if (nextPageToken) {
         requestBody.nextPageToken = nextPageToken;
@@ -1813,7 +1813,47 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
     } while (nextPageToken);
 
-    console.log(`Capacity Planning: Collected ${openIssues.length} open tickets, ${recentIssues.length} recent tickets, ${resolvedIssues.length} resolved tickets`);
+    // Fetch Discovery Ideas from Technology Roadmap
+    // Try fetching all TR issues first to debug
+    const discoveryIdeasJQL = 'Project = TR ORDER BY created DESC';
+    let discoveryIdeas = [];
+    nextPageToken = null;
+    try {
+      do {
+        const requestBody = {
+          jql: discoveryIdeasJQL,
+          maxResults: 50,
+          fields: ['summary', 'status', 'created', 'updated', 'issuetype', 'project', 'issuelinks']
+        };
+        if (nextPageToken) {
+          requestBody.nextPageToken = nextPageToken;
+        }
+        const response = await jiraAPI.post('/search/jql', requestBody);
+        discoveryIdeas = discoveryIdeas.concat(response.data.issues || []);
+        nextPageToken = response.data.nextPageToken;
+        if (response.data.isLast || discoveryIdeas.length >= 200) {
+          break;
+        }
+      } while (nextPageToken);
+
+      console.log(`TR Query returned ${discoveryIdeas.length} items`);
+      if (discoveryIdeas.length > 0) {
+        // Log the issue types we're seeing
+        const issueTypes = discoveryIdeas.map(i => i.fields.issuetype?.name).filter((v, i, a) => a.indexOf(v) === i);
+        console.log(`TR Issue types found: ${issueTypes.join(', ')}`);
+        // Log first few items as examples
+        console.log('First 3 TR items:', discoveryIdeas.slice(0, 3).map(i => ({
+          key: i.key,
+          type: i.fields.issuetype?.name,
+          summary: i.fields.summary
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching TR items:', err.message);
+      discoveryIdeas = [];
+    }
+
+    console.log(`Capacity Planning: Collected ${openIssues.length} open tickets, ${recentIssues.length} recent tickets, ${resolvedIssues.length} resolved tickets, ${discoveryIdeas.length} discovery ideas`);
 
     // Helper function to calculate default estimate
     const getDefaultEstimate = (issue) => {
@@ -2033,6 +2073,240 @@ app.get('/api/capacity-planning', async (req, res) => {
         return b.openTickets - a.openTickets;
       });
 
+    // Helper function to find Discovery Idea from issue links
+    const findDiscoveryIdea = (issue) => {
+      if (!issue.fields.issuelinks || issue.fields.issuelinks.length === 0) {
+        return null;
+      }
+
+      for (const link of issue.fields.issuelinks) {
+        // Check if the linked issue is an Idea or Initiative from TR project (inward or outward link)
+        const linkedIssue = link.inwardIssue || link.outwardIssue;
+        if (linkedIssue) {
+          const issueType = linkedIssue.fields?.issuetype?.name;
+          const projectKey = linkedIssue.key?.split('-')[0];
+          if (projectKey === 'TR' && (issueType === 'Idea' || issueType === 'Initiative')) {
+            return {
+              key: linkedIssue.key,
+              summary: linkedIssue.fields.summary
+            };
+          }
+        }
+      }
+      return null;
+    };
+
+    // First pass: Collect all unique Epic keys and fetch their details including issuelinks
+    const epicKeys = new Set();
+    openIssues.forEach(issue => {
+      if (issue.fields.parent?.key) {
+        epicKeys.add(issue.fields.parent.key);
+      }
+    });
+
+    // Fetch Epic details with issuelinks
+    const epics = [];
+    if (epicKeys.size > 0) {
+      const epicKeysArray = Array.from(epicKeys);
+      // Batch fetch epics (max 100 per request)
+      for (let i = 0; i < epicKeysArray.length; i += 100) {
+        const batch = epicKeysArray.slice(i, i + 100);
+        const epicJQL = `key IN (${batch.join(',')})`;
+        try {
+          const epicResponse = await jiraAPI.post('/search/jql', {
+            jql: epicJQL,
+            maxResults: 100,
+            fields: ['summary', 'issuetype', 'issuelinks']
+          });
+          epics.push(...(epicResponse.data.issues || []));
+        } catch (err) {
+          console.error('Error fetching epic details:', err.message);
+        }
+      }
+    }
+
+    // Map Epics to Discovery Ideas based on:
+    // 1. Epic's own direct links to TR items
+    // 2. Child tickets' links to TR items
+    const epicToDiscoveryIdea = {};
+
+    // Check Epic's own links first
+    epics.forEach(epic => {
+      const discoveryIdea = findDiscoveryIdea(epic);
+      if (discoveryIdea) {
+        epicToDiscoveryIdea[epic.key] = discoveryIdea;
+      }
+    });
+
+    // Then check child tickets' links (only if Epic doesn't already have a mapping)
+    openIssues.forEach(issue => {
+      const parentEpic = issue.fields.parent?.key;
+      if (parentEpic && !epicToDiscoveryIdea[parentEpic]) {
+        const discoveryIdea = findDiscoveryIdea(issue);
+        if (discoveryIdea) {
+          epicToDiscoveryIdea[parentEpic] = discoveryIdea;
+        }
+      }
+    });
+
+    // Group work hierarchically: Discovery Idea > DTI Requests > Epic/Project
+    const parentGrouping = {};
+    openIssues.forEach(issue => {
+      const projectKey = issue.fields.project?.key;
+      const issueTypeName = issue.fields.issuetype?.name;
+      let groupKey, groupName, groupType, parentGroup;
+
+      // Check if this ticket has a parent Epic
+      const parentEpic = issue.fields.parent?.key;
+
+      // If the parent Epic is linked to a Discovery Idea, group Epic under that Discovery Idea
+      if (parentEpic && epicToDiscoveryIdea[parentEpic]) {
+        groupKey = parentEpic;
+        groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+        groupType = 'Epic';
+        parentGroup = `${epicToDiscoveryIdea[parentEpic].key}: ${epicToDiscoveryIdea[parentEpic].summary}`;
+      }
+      // Check for direct Discovery Idea link on the ticket itself
+      else {
+        const discoveryIdea = findDiscoveryIdea(issue);
+        if (discoveryIdea) {
+          // If this issue has an Epic parent, group the Epic under the Discovery Idea
+          if (issue.fields.parent) {
+            groupKey = issue.fields.parent.key;
+            groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+            groupType = 'Epic';
+            parentGroup = `${discoveryIdea.key}: ${discoveryIdea.summary}`;
+          }
+          // If no Epic parent, group the issue itself under the Discovery Idea
+          else {
+            groupKey = issue.key;
+            groupName = `${issue.key}: ${issue.fields.summary}`;
+            groupType = issueTypeName;
+            parentGroup = `${discoveryIdea.key}: ${discoveryIdea.summary}`;
+          }
+        }
+        // For DTI project items, group under "DTI Requests"
+        else if (projectKey === 'DTI') {
+          // If has Epic parent, use Epic but group under DTI Requests
+          if (issue.fields.parent) {
+            groupKey = issue.fields.parent.key;
+            groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+            groupType = 'Epic';
+            parentGroup = 'DTI Requests';
+          } else {
+            groupKey = `DTI-${issueTypeName}`;
+            groupName = `DTI: ${issueTypeName}`;
+            groupType = 'Issue Type';
+            parentGroup = 'DTI Requests';
+          }
+        }
+        // If issue has a parent (Epic), use that
+        else if (issue.fields.parent) {
+          groupKey = issue.fields.parent.key;
+          groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+          groupType = 'Epic';
+          parentGroup = null;
+        }
+        // For other projects without parent, group by issue type
+        else {
+          groupKey = `${projectKey}-${issueTypeName}`;
+          groupName = `${projectKey}: ${issueTypeName}`;
+          groupType = 'Issue Type';
+          parentGroup = null;
+        }
+      }
+
+      if (!parentGrouping[groupKey]) {
+        parentGrouping[groupKey] = {
+          name: groupName,
+          type: groupType,
+          parentGroup: parentGroup,
+          tickets: 0,
+          estimateHours: 0,
+          defaultHours: 0,
+          totalHours: 0
+        };
+      }
+
+      parentGrouping[groupKey].tickets++;
+
+      // Calculate estimates
+      if (issue.fields.timeoriginalestimate) {
+        parentGrouping[groupKey].estimateHours += Math.round(issue.fields.timeoriginalestimate / 3600);
+      } else {
+        const defaultEst = getDefaultEstimate(issue);
+        if (defaultEst > 0) {
+          parentGrouping[groupKey].defaultHours += Math.round(defaultEst / 3600);
+        }
+      }
+      parentGrouping[groupKey].totalHours = parentGrouping[groupKey].estimateHours + parentGrouping[groupKey].defaultHours;
+    });
+
+    // Create hierarchical structure
+    const hierarchicalGroups = [];
+    const groupsByParent = {};
+
+    // First pass: organize by parent group
+    Object.entries(parentGrouping).forEach(([key, data]) => {
+      if (data.parentGroup) {
+        if (!groupsByParent[data.parentGroup]) {
+          groupsByParent[data.parentGroup] = [];
+        }
+        groupsByParent[data.parentGroup].push({ key, ...data });
+      } else {
+        hierarchicalGroups.push({ key, ...data, children: [] });
+      }
+    });
+
+    // Second pass: add children to parent groups
+    Object.entries(groupsByParent).forEach(([parentName, children]) => {
+      // Sort children by total hours
+      children.sort((a, b) => b.totalHours - a.totalHours);
+
+      // Calculate totals for parent group
+      const parentTotals = children.reduce((acc, child) => ({
+        tickets: acc.tickets + child.tickets,
+        estimateHours: acc.estimateHours + child.estimateHours,
+        defaultHours: acc.defaultHours + child.defaultHours,
+        totalHours: acc.totalHours + child.totalHours
+      }), { tickets: 0, estimateHours: 0, defaultHours: 0, totalHours: 0 });
+
+      hierarchicalGroups.push({
+        key: parentName,
+        name: parentName,
+        type: 'Project Group',
+        ...parentTotals,
+        children: children
+      });
+    });
+
+    // Third pass: add Discovery Ideas from Technology Roadmap
+    // These should appear as parent groups even if they don't have linked work items
+    discoveryIdeas.forEach(idea => {
+      const ideaKey = idea.key;
+      const ideaName = `${idea.key}: ${idea.fields.summary}`;
+      const ideaType = idea.fields.issuetype?.name || 'Discovery Idea';
+
+      // Check if this Discovery Idea already exists (has children)
+      const existingGroup = hierarchicalGroups.find(g => g.name === ideaName);
+      if (!existingGroup) {
+        // Add as a new parent group with no children
+        hierarchicalGroups.push({
+          key: ideaKey,
+          name: ideaName,
+          type: ideaType,
+          tickets: 0,
+          estimateHours: 0,
+          defaultHours: 0,
+          totalHours: 0,
+          children: []
+        });
+      }
+    });
+
+    // Sort top-level groups by total hours descending
+    const sortedParentGroups = hierarchicalGroups.sort((a, b) => b.totalHours - a.totalHours);
+
     res.json({
       summary: {
         totalOpenTickets: openIssues.length,
@@ -2058,7 +2332,8 @@ app.get('/api/capacity-planning', async (req, res) => {
         resolvedTicketsWithDefault: resolvedTicketsWithDefault
       },
       assigneeWorkload: sortedAssignees,
-      ticketFlow: flowData
+      ticketFlow: flowData,
+      parentGrouping: sortedParentGroups
     });
 
   } catch (error) {
