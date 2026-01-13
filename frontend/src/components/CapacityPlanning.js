@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './CapacityPlanning.css';
 
 function CapacityPlanning({ data }) {
+  const [expandedGroups, setExpandedGroups] = useState({});
+
   if (!data) {
     return (
       <div className="capacity-planning">
@@ -14,6 +16,13 @@ function CapacityPlanning({ data }) {
   }
 
   const { summary, assigneeWorkload, ticketFlow, parentGrouping} = data;
+
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
 
   // Calculate max values for bar chart scaling (using total hours including defaults)
   const maxWorkload = Math.max(...assigneeWorkload.map(a => a.totalHours || 0), 1);
@@ -146,12 +155,22 @@ function CapacityPlanning({ data }) {
             {parentGrouping.map((group, index) => {
               const maxParentWorkload = Math.max(...parentGrouping.map(g => g.totalHours || 0), 1);
               const hasChildren = group.children && group.children.length > 0;
+              const isExpanded = expandedGroups[group.key];
 
               return (
                 <React.Fragment key={index}>
                   {/* Parent/Group Row */}
-                  <div className={`parent-grouping-row ${hasChildren ? 'parent-group' : ''}`}>
-                    <div className="parent-col-name">{group.name}</div>
+                  <div
+                    className={`parent-grouping-row ${hasChildren ? 'parent-group clickable' : ''}`}
+                    onClick={() => hasChildren && toggleGroup(group.key)}
+                    style={{ cursor: hasChildren ? 'pointer' : 'default' }}
+                  >
+                    <div className="parent-col-name">
+                      {hasChildren && (
+                        <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+                      )}
+                      {group.name}
+                    </div>
                     <div className="parent-col-type">{group.type}</div>
                     <div className="parent-col-tickets">{group.tickets}</div>
                     <div className="parent-col-estimated">
@@ -177,7 +196,7 @@ function CapacityPlanning({ data }) {
                   </div>
 
                   {/* Child Rows */}
-                  {hasChildren && group.children.map((child, childIndex) => (
+                  {hasChildren && isExpanded && group.children.map((child, childIndex) => (
                     <div key={`${index}-${childIndex}`} className="parent-grouping-row child-row">
                       <div className="parent-col-name child-indent">{child.name}</div>
                       <div className="parent-col-type">{child.type}</div>

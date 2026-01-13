@@ -276,6 +276,25 @@
 .parent-col-name {
   font-weight: 500;
   color: #323E48;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expand-icon {
+  font-size: 0.75rem;
+  color: #6B778C;
+  transition: transform 0.2s ease;
+  display: inline-block;
+  min-width: 12px;
+}
+
+.parent-grouping-row.clickable:hover .expand-icon {
+  color: #A9DE33;
+}
+
+.parent-grouping-row.clickable {
+  user-select: none;
 }
 
 .parent-col-name.child-indent {
