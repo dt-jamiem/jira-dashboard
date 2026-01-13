@@ -1780,6 +1780,37 @@ app.get('/api/capacity-planning', async (req, res) => {
     const recentIssues = recentResponse.data.issues;
     const resolvedIssues = resolvedResponse.data.issues;
 
+    // Helper function to calculate default estimate
+    const getDefaultEstimate = (issue) => {
+      // Check if original estimate exists
+      if (issue.fields.timeoriginalestimate) {
+        return 0; // No default needed
+      }
+
+      // Check if item qualifies for default estimate
+      const projectKey = issue.fields.project?.key;
+      const issueTypeName = issue.fields.issuetype?.name;
+      const statusCategory = issue.fields.status?.statusCategory?.name;
+
+      // Apply to DTI project items or User Stories/Tasks in other projects
+      const qualifies = projectKey === 'DTI' ||
+                       issueTypeName === 'Story' ||
+                       issueTypeName === 'Task';
+
+      if (!qualifies) {
+        return 0;
+      }
+
+      // Determine default hours based on status
+      if (statusCategory === 'To Do') {
+        return 4 * 3600; // 4 hours in seconds
+      } else if (statusCategory === 'In Progress') {
+        return 2 * 3600; // 2 hours in seconds
+      } else {
+        return 0; // Done or other status
+      }
+    };
+
     // Calculate assignee workload
     const assigneeWorkload = {};
     openIssues.forEach(issue => {
@@ -1887,37 +1918,6 @@ app.get('/api/capacity-planning', async (req, res) => {
     // Calculate team velocity (tickets resolved per week)
     const weeksInPeriod = Math.ceil(days / 7);
     const velocity = weeksInPeriod > 0 ? Math.round(resolvedIssues.length / weeksInPeriod) : 0;
-
-    // Helper function to calculate default estimate
-    const getDefaultEstimate = (issue) => {
-      // Check if original estimate exists
-      if (issue.fields.timeoriginalestimate) {
-        return 0; // No default needed
-      }
-
-      // Check if item qualifies for default estimate
-      const projectKey = issue.fields.project?.key;
-      const issueTypeName = issue.fields.issuetype?.name;
-      const statusCategory = issue.fields.status?.statusCategory?.name;
-
-      // Apply to DTI project items or User Stories/Tasks in other projects
-      const qualifies = projectKey === 'DTI' ||
-                       issueTypeName === 'Story' ||
-                       issueTypeName === 'Task';
-
-      if (!qualifies) {
-        return 0;
-      }
-
-      // Determine default hours based on status
-      if (statusCategory === 'To Do') {
-        return 4 * 3600; // 4 hours in seconds
-      } else if (statusCategory === 'In Progress') {
-        return 2 * 3600; // 2 hours in seconds
-      } else {
-        return 0; // Done or other status
-      }
-    };
 
     // Calculate original estimates and default estimates (in seconds, convert to hours)
     let totalOpenEstimate = 0;
