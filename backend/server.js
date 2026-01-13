@@ -2200,12 +2200,14 @@ app.get('/api/capacity-planning', async (req, res) => {
             parentGroup = 'DTI Requests';
           }
         }
-        // If issue has a parent (Epic), use that
+        // If issue has a parent (Epic), use that and group under project
         else if (issue.fields.parent) {
           groupKey = issue.fields.parent.key;
           groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
           groupType = 'Epic';
-          parentGroup = null;
+          // Group Epic under its project
+          const projectName = issue.fields.project?.name || projectKey;
+          parentGroup = `${projectKey}: ${projectName}`;
         }
         // For other projects without parent, group by issue type
         else {
@@ -2304,8 +2306,10 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
     });
 
-    // Sort top-level groups by total hours descending
-    const sortedParentGroups = hierarchicalGroups.sort((a, b) => b.totalHours - a.totalHours);
+    // Filter out "Issue Type" groups and sort by total hours descending
+    const sortedParentGroups = hierarchicalGroups
+      .filter(group => group.type !== 'Issue Type')
+      .sort((a, b) => b.totalHours - a.totalHours);
 
     res.json({
       summary: {
