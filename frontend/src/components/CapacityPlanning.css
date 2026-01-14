@@ -578,6 +578,122 @@
   }
 }
 
+/* Guess Rules Summary */
+.guess-rules-summary {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
+}
+
+.guess-rules-summary h3 {
+  margin: 0 0 1.5rem 0;
+  padding: 0;
+  border: none;
+  font-size: 1.4rem;
+  color: #323E48;
+  text-align: center;
+  font-weight: 600;
+}
+
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.rule-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 2px solid #e0e0e0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rule-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.rule-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #323E48;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #A9DE33;
+  text-align: center;
+}
+
+.rule-content {
+  margin-bottom: 1rem;
+}
+
+.rule-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.rule-row:last-child {
+  border-bottom: none;
+}
+
+.status-badge {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.todo {
+  background: #E3F2FD;
+  color: #1976D2;
+  border: 1px solid #90CAF9;
+}
+
+.status-badge.inprogress {
+  background: #FFF3E0;
+  color: #F57C00;
+  border: 1px solid #FFB74D;
+}
+
+.estimate-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #323E48;
+  background: #f8f9fa;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #d0d0d0;
+}
+
+.rule-note {
+  font-size: 0.8rem;
+  color: #6B778C;
+  text-align: center;
+  font-style: italic;
+  line-height: 1.4;
+  padding-top: 0.5rem;
+}
+
+.rules-footer {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #6B778C;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+  font-style: italic;
+}
+
 /* Team Capacity Cards */
 .team-capacity-grid {
   display: grid;

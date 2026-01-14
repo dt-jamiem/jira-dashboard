@@ -1791,7 +1791,7 @@ app.get('/api/capacity-planning', async (req, res) => {
       const requestBody = {
         jql: openTicketsJQL,
         maxResults: 50,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'parent', 'issuelinks', 'customfield_10001', 'customfield_10083']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'parent', 'issuelinks', 'customfield_10001', 'customfield_10010', 'customfield_10083']
       };
       if (nextPageToken) {
         requestBody.nextPageToken = nextPageToken;
@@ -1813,7 +1813,7 @@ app.get('/api/capacity-planning', async (req, res) => {
       const requestBody = {
         jql: recentTicketsJQL,
         maxResults: 50,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'customfield_10010']
       };
       if (nextPageToken) {
         requestBody.nextPageToken = nextPageToken;
@@ -1834,7 +1834,7 @@ app.get('/api/capacity-planning', async (req, res) => {
       const requestBody = {
         jql: resolvedTicketsJQL,
         maxResults: 50,
-        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project']
+        fields: ['summary', 'status', 'assignee', 'created', 'updated', 'issuetype', 'priority', 'resolutiondate', 'timeoriginalestimate', 'project', 'customfield_10010']
       };
       if (nextPageToken) {
         requestBody.nextPageToken = nextPageToken;
@@ -1910,11 +1910,35 @@ app.get('/api/capacity-planning', async (req, res) => {
         return 0;
       }
 
-      // Determine default hours based on status
+      // Check if this is a User Story or Task (software development items)
+      const isSoftwareItem = issueTypeName === 'Story' || issueTypeName === 'Task';
+
+      // Check for higher-complexity DTI request types
+      const requestType = issue.fields.customfield_10010?.requestType?.name;
+      const higherComplexityTypes = [
+        'Build or Deployment Issues',
+        'Connectivity Issue',
+        'Branch Request'
+      ];
+      const isHigherComplexity = projectKey === 'DTI' &&
+                                 requestType &&
+                                 higherComplexityTypes.includes(requestType);
+
+      // Determine default hours based on issue type and status
       if (statusCategory === 'To Do') {
-        return 4 * 3600; // 4 hours in seconds
+        // User Stories and Tasks get 8 hours
+        if (isSoftwareItem) {
+          return 8 * 3600; // 8 hours in seconds
+        }
+        // DTI items: 6 hours for complex types, 4 hours for standard
+        return isHigherComplexity ? 6 * 3600 : 4 * 3600;
       } else if (statusCategory === 'In Progress') {
-        return 2 * 3600; // 2 hours in seconds
+        // User Stories and Tasks get 4 hours
+        if (isSoftwareItem) {
+          return 4 * 3600; // 4 hours in seconds
+        }
+        // DTI items: 3 hours for complex types, 2 hours for standard
+        return isHigherComplexity ? 3 * 3600 : 2 * 3600;
       } else {
         return 0; // Done or other status
       }

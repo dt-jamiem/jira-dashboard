@@ -5,6 +5,14 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### January 2026
+- **Enhanced Guess Estimate Rules & Visual Summary**: Updated estimation logic and added visual rules display (January 14, 2026)
+  - Increased estimates for User Stories and Tasks: 8 hours (To Do), 4 hours (In Progress)
+  - Added higher-complexity DTI request types: Build/Deployment Issues, Connectivity Issue, Branch Request get 6 hours (To Do), 3 hours (In Progress)
+  - Standard DTI requests: 4 hours (To Do), 2 hours (In Progress)
+  - Replaced summary cards with visual Guess Estimate Rules summary section
+  - Three-card layout clearly showing estimation rules by ticket type and status
+  - Color-coded status badges (blue for To Do, orange for In Progress)
+  - Helps teams understand capacity calculations at a glance
 - **Team Capacity Utilization**: Added team capacity calculations and visualization (January 14, 2026)
   - Configured team capacity with engineer counts: DBA (2), DevOps (6), Technology Operations (4)
   - Calculates available capacity based on working days and productive hours per day (6h/day)
@@ -125,7 +133,13 @@ The dashboard is organized into five main tabs:
 
 ### Capacity Planning Tab
 - **Capacity Planning Dashboard**: Comprehensive team-based workload analysis and forecasting (last 30 days)
-  - **Summary Cards**: Total story points, team velocity, completion forecast, and cumulative flow metrics
+  - **Guess Estimate Rules Summary**: Visual display of estimation rules for unestimated tickets
+    - Three-card layout showing rules by ticket type (Stories/Tasks, DTI Complex, DTI Standard)
+    - Color-coded status badges for To Do (blue) and In Progress (orange)
+    - Stories & Tasks: 8 hours (To Do), 4 hours (In Progress)
+    - DTI Higher Complexity: 6 hours (To Do), 3 hours (In Progress) for Build/Deployment Issues, Connectivity Issue, Branch Request
+    - DTI Standard: 4 hours (To Do), 2 hours (In Progress) for all other DTI request types
+    - Done tickets always = 0 hours
   - **Team Capacity Utilization**: Visual cards showing capacity analysis for each sub-team
     - Available capacity calculated from engineer count × working days × 6 hours/day
     - Current workload hours from open tickets (estimated + guessed story points)
@@ -314,11 +328,25 @@ Tracks the average age of currently open DevOps tickets:
 #### Capacity Planning Dashboard
 Comprehensive team-based workload analysis and forecasting dashboard (last 30 days):
 
-**Summary Cards:**
-- **Total Workload**: Combined story points from all team members (estimated + guessed for unestimated tickets)
-- **Team Velocity**: Average story points completed per day based on the 30-day period
-- **Completion Forecast**: Estimated days to complete current workload at current velocity
-- **Cumulative Flow**: Net change in open tickets (created vs resolved) over the period
+**Guess Estimate Rules Summary:**
+Visual display showing how unestimated tickets are calculated:
+- **Three-Card Layout**: Clear presentation of estimation rules organized by ticket type
+- **Rule Categories**:
+  1. **User Stories & Tasks** (any project):
+     - To Do status: 8 hours
+     - In Progress status: 4 hours
+  2. **DTI Higher Complexity** (Build/Deployment Issues, Connectivity Issue, Branch Request):
+     - To Do status: 6 hours
+     - In Progress status: 3 hours
+  3. **DTI Standard** (all other DTI request types):
+     - To Do status: 4 hours
+     - In Progress status: 2 hours
+- **Visual Design**:
+  - Color-coded status badges: Blue for "To Do", Orange for "In Progress"
+  - Large, clear hour values for easy reading
+  - Descriptive notes explaining which ticket types qualify for each rule
+  - Footer note: "Tickets with existing estimates use actual values • Done tickets = 0 hours"
+- **Purpose**: Provides transparency on capacity calculations and helps teams understand workload estimates
 
 **Team Capacity Utilization:**
 Visual capacity cards showing detailed capacity analysis for each sub-team:

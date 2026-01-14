@@ -184,52 +184,57 @@ function CapacityPlanning({ data }) {
       <h2>Capacity Planning</h2>
       <p className="period-note">Last {summary.period} days</p>
 
-      {/* Summary Cards */}
-      <div className="capacity-summary-cards">
-        <div className="capacity-card">
-          <div className="capacity-card-label">Open Tickets</div>
-          <div className="capacity-card-value">{summary.totalOpenTickets}</div>
-          {summary.openTicketsWithEstimate > 0 && (
-            <div className="capacity-card-subtitle">
-              {summary.openTicketsWithEstimate} with estimates
+      {/* Guess Estimate Rules Summary */}
+      <div className="guess-rules-summary">
+        <h3>Guess Estimate Rules for Unestimated Tickets</h3>
+        <div className="rules-grid">
+          <div className="rule-card">
+            <div className="rule-header">User Stories & Tasks</div>
+            <div className="rule-content">
+              <div className="rule-row">
+                <span className="status-badge todo">To Do</span>
+                <span className="estimate-value">8 hours</span>
+              </div>
+              <div className="rule-row">
+                <span className="status-badge inprogress">In Progress</span>
+                <span className="estimate-value">4 hours</span>
+              </div>
             </div>
-          )}
-        </div>
-        <div className="capacity-card">
-          <div className="capacity-card-label">Open Estimate</div>
-          <div className="capacity-card-value">{summary.openTotalHours} <span className="velocity-unit">hours</span></div>
-          <div className="capacity-card-subtitle">
-            {summary.openEstimateHours}h est + {summary.openDefaultHours}h def
+            <div className="rule-note">Any project</div>
+          </div>
+
+          <div className="rule-card">
+            <div className="rule-header">DTI Higher Complexity</div>
+            <div className="rule-content">
+              <div className="rule-row">
+                <span className="status-badge todo">To Do</span>
+                <span className="estimate-value">6 hours</span>
+              </div>
+              <div className="rule-row">
+                <span className="status-badge inprogress">In Progress</span>
+                <span className="estimate-value">3 hours</span>
+              </div>
+            </div>
+            <div className="rule-note">Build/Deployment Issues, Connectivity, Branch Request</div>
+          </div>
+
+          <div className="rule-card">
+            <div className="rule-header">DTI Standard</div>
+            <div className="rule-content">
+              <div className="rule-row">
+                <span className="status-badge todo">To Do</span>
+                <span className="estimate-value">4 hours</span>
+              </div>
+              <div className="rule-row">
+                <span className="status-badge inprogress">In Progress</span>
+                <span className="estimate-value">2 hours</span>
+              </div>
+            </div>
+            <div className="rule-note">All other DTI request types</div>
           </div>
         </div>
-        <div className="capacity-card">
-          <div className="capacity-card-label">Tickets Created</div>
-          <div className="capacity-card-value">{summary.ticketsCreated}</div>
-          <div className="capacity-card-subtitle">
-            {summary.createdTotalHours}h total ({summary.createdEstimateHours}h + {summary.createdDefaultHours}h)
-          </div>
-        </div>
-        <div className="capacity-card">
-          <div className="capacity-card-label">Tickets Resolved</div>
-          <div className="capacity-card-value">{summary.ticketsResolved}</div>
-          <div className="capacity-card-subtitle">
-            {summary.resolvedTotalHours}h total ({summary.resolvedEstimateHours}h + {summary.resolvedDefaultHours}h)
-          </div>
-        </div>
-        <div className="capacity-card">
-          <div className="capacity-card-label">Avg Resolution Time</div>
-          <div className="capacity-card-value">{summary.avgResolutionTime} days</div>
-        </div>
-        <div className="capacity-card">
-          <div className="capacity-card-label">Team Velocity</div>
-          <div className="capacity-card-value">{summary.velocity} <span className="velocity-unit">tickets/week</span></div>
-        </div>
-        <div className={`capacity-card ${flowTrend === 'increasing' ? 'warning' : flowTrend === 'decreasing' ? 'positive' : ''}`}>
-          <div className="capacity-card-label">Net Flow</div>
-          <div className="capacity-card-value">
-            {netFlow > 0 ? '+' : ''}{netFlow}
-          </div>
-          <div className="capacity-card-trend">{flowTrend}</div>
+        <div className="rules-footer">
+          Tickets with existing estimates use actual values • Done tickets = 0 hours
         </div>
       </div>
 
