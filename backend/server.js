@@ -2284,12 +2284,19 @@ app.get('/api/capacity-planning', async (req, res) => {
       }
 
       for (const link of issue.fields.issuelinks) {
-        // Check if the linked issue is an Idea or Initiative from TR project (inward or outward link)
+        // Check if the linked issue is a Deliver or Initiative from TR project (inward or outward link)
         const linkedIssue = link.inwardIssue || link.outwardIssue;
         if (linkedIssue) {
           const issueType = linkedIssue.fields?.issuetype?.name;
           const projectKey = linkedIssue.key?.split('-')[0];
-          if (projectKey === 'TR' && (issueType === 'Idea' || issueType === 'Initiative')) {
+
+          // Debug logging for TR links
+          if (projectKey === 'TR') {
+            console.log(`Found TR link: ${linkedIssue.key}, type: ${issueType}, from issue: ${issue.key}`);
+          }
+
+          if (projectKey === 'TR' && (issueType === 'Deliver' || issueType === 'Delivery' || issueType === 'Initiative')) {
+            console.log(`✓ Matched TR item: ${linkedIssue.key} (${issueType})`);
             return {
               key: linkedIssue.key,
               summary: linkedIssue.fields.summary
@@ -2369,6 +2376,7 @@ app.get('/api/capacity-planning', async (req, res) => {
         groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
         groupType = 'Epic';
         parentGroup = `${epicToDiscoveryIdea[parentEpic].key}: ${epicToDiscoveryIdea[parentEpic].summary}`;
+        console.log(`  📋 Grouping Epic ${parentEpic} under TR item ${epicToDiscoveryIdea[parentEpic].key} (via Epic link)`);
       }
       // Check for direct Discovery Idea link on the ticket itself
       else {
@@ -2380,6 +2388,7 @@ app.get('/api/capacity-planning', async (req, res) => {
             groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
             groupType = 'Epic';
             parentGroup = `${discoveryIdea.key}: ${discoveryIdea.summary}`;
+            console.log(`  📋 Grouping Epic ${issue.fields.parent.key} under TR item ${discoveryIdea.key} (via child ticket ${issue.key} link)`);
           }
           // If no Epic parent, group the issue itself under the Discovery Idea
           else {
@@ -2387,6 +2396,7 @@ app.get('/api/capacity-planning', async (req, res) => {
             groupName = `${issue.key}: ${issue.fields.summary}`;
             groupType = issueTypeName;
             parentGroup = `${discoveryIdea.key}: ${discoveryIdea.summary}`;
+            console.log(`  📋 Grouping ticket ${issue.key} directly under TR item ${discoveryIdea.key}`);
           }
         }
         // For DTI project items, group under "DTI Requests" with team-based grouping
@@ -2542,15 +2552,19 @@ app.get('/api/capacity-planning', async (req, res) => {
 
     // Third pass: add Discovery Ideas from Technology Roadmap and update their type
     // These should appear as parent groups even if they don't have linked work items
+    console.log(`Processing ${discoveryIdeas.length} TR items to add to hierarchical groups`);
     discoveryIdeas.forEach(idea => {
       const ideaKey = idea.key;
       const ideaName = `${idea.key}: ${idea.fields.summary}`;
-      const ideaType = 'Initiative';
+      const ideaType = idea.fields.issuetype?.name || 'Initiative';
+
+      console.log(`  TR item: ${ideaKey}, type: ${ideaType}, summary: ${idea.fields.summary?.substring(0, 50)}`);
 
       // Check if this Discovery Idea already exists (has children)
       const existingGroup = hierarchicalGroups.find(g => g.name === ideaName || g.key === ideaKey);
       if (existingGroup) {
         // Update the type to Initiative if it already exists
+        console.log(`    ✓ Found existing group for ${ideaKey}, updating type to ${ideaType}, has ${existingGroup.children?.length || 0} children`);
         existingGroup.type = ideaType;
       } else {
         // Add as a new parent group with no children
@@ -2729,13 +2743,13 @@ app.get('/api/capacity-planning', async (req, res) => {
       group.name === 'DTI Requests' || group.key === 'DTI Requests'
     ).sort((a, b) => b.totalHours - a.totalHours);
 
-    // Helper function to check if a group or its children are Initiatives
+    // Helper function to check if a group or its children are Initiatives or Delivery types
     const isInitiativeRelated = (group) => {
-      // Check if group itself is an Initiative
-      if (group.type === 'Initiative') return true;
-      // Check if any children are Initiatives
+      // Check if group itself is an Initiative, Deliver, or Delivery
+      if (group.type === 'Initiative' || group.type === 'Deliver' || group.type === 'Delivery') return true;
+      // Check if any children are Initiatives, Deliver, or Delivery types
       if (group.children && group.children.length > 0) {
-        return group.children.some(child => child.type === 'Initiative');
+        return group.children.some(child => child.type === 'Initiative' || child.type === 'Deliver' || child.type === 'Delivery');
       }
       return false;
     };
