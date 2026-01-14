@@ -5,6 +5,13 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### January 2026
+- **Technology Roadmap Integration & Private Cloud Team**: Enhanced capacity planning with roadmap tracking and additional team (January 14, 2026)
+  - Updated TR query to exclude 'Idea' types and include 'Delivery' types for active roadmap items
+  - Delivery types now appear in "Deliver" bucket, Initiatives remain in "Improve" bucket
+  - Added Private Cloud team with 2 engineers: Keith Wijey-Wardna and Mike Cave
+  - Fixed team assignment detection to read team field (customfield_10001) for all projects including Technology Group
+  - TG tickets now properly assigned to their designated teams (DevOps, Tech Ops, etc.) instead of defaulting to "Other"
+  - Real-time capacity updates when team assignments are changed in Jira
 - **Enhanced Guess Estimate Rules & Visual Summary**: Updated estimation logic and added visual rules display (January 14, 2026)
   - Increased estimates for User Stories and Tasks: 8 hours (To Do), 4 hours (In Progress)
   - Added higher-complexity DTI request types: Build/Deployment Issues, Connectivity Issue, Branch Request get 6 hours (To Do), 3 hours (In Progress)
@@ -14,7 +21,7 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
   - Color-coded status badges (blue for To Do, orange for In Progress)
   - Helps teams understand capacity calculations at a glance
 - **Team Capacity Utilization**: Added team capacity calculations and visualization (January 14, 2026)
-  - Configured team capacity with engineer counts: DBA (2), DevOps (6), Technology Operations (4)
+  - Configured team capacity with engineer counts: DBA (2), DevOps (6), Technology Operations (4), Private Cloud (2)
   - Calculates available capacity based on working days and productive hours per day (6h/day)
   - Visual capacity cards showing available capacity vs. current workload for each team
   - Color-coded utilization bars: Green (≤80%), Orange (80-100%), Red (>100% over capacity)
@@ -146,7 +153,7 @@ The dashboard is organized into five main tabs:
     - Color-coded utilization bar: Green (≤80%), Orange (80-100%), Red (>100%)
     - Utilization percentage with over-capacity warnings
     - Team members list with badges
-    - Configured teams: DBA (2 engineers), DevOps (6 engineers), Technology Operations (4 engineers)
+    - Configured teams: DBA (2 engineers), DevOps (6 engineers), Technology Operations (4 engineers), Private Cloud (2 engineers)
   - **Workload by Assignee**: Table showing each team member's workload with:
     - Total tickets (with breakdown of estimated vs unestimated)
     - Story points (estimated + guessed for unestimated tickets)

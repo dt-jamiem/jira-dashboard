@@ -1759,6 +1759,10 @@ app.get('/api/capacity-planning', async (req, res) => {
       'Technology Operations': {
         engineers: 4,
         members: ['Mark Fairmaid', 'Ann Winston', 'Suresh Kaniyappa', 'Graham Wilson']
+      },
+      'Private Cloud': {
+        engineers: 2,
+        members: ['Keith Wijey-Wardna', 'Mike Cave']
       }
     };
 
@@ -1988,15 +1992,22 @@ app.get('/api/capacity-planning', async (req, res) => {
           }
         }
       } else {
-        // For non-DTI items, check project-based fallback rules first
+        // For non-DTI items, check if they have a team field first
         const projectKey = issue.fields.project?.key;
+        const teamField = issue.fields.customfield_10001;
 
-        if (projectKey === 'INFRA') {
+        // Try to get team from customfield_10001 first (works for TG and other projects)
+        if (teamField && teamField.name) {
+          teamName = teamField.name;
+        } else if (teamField && typeof teamField === 'string') {
+          teamName = teamField;
+        } else if (projectKey === 'INFRA') {
+          // Project-based fallback rules
           teamName = 'Technology Operations';
         } else if (projectKey === 'DevOps') {
           teamName = 'DevOps';
         } else {
-          // All other projects go to "Other" team
+          // All other projects without team field go to "Other" team
           teamName = 'Other';
         }
       }
@@ -2743,13 +2754,13 @@ app.get('/api/capacity-planning', async (req, res) => {
       group.name === 'DTI Requests' || group.key === 'DTI Requests'
     ).sort((a, b) => b.totalHours - a.totalHours);
 
-    // Helper function to check if a group or its children are Initiatives or Delivery types
+    // Helper function to check if a group or its children are Initiatives (Improve category)
     const isInitiativeRelated = (group) => {
-      // Check if group itself is an Initiative, Deliver, or Delivery
-      if (group.type === 'Initiative' || group.type === 'Deliver' || group.type === 'Delivery') return true;
-      // Check if any children are Initiatives, Deliver, or Delivery types
+      // Check if group itself is an Initiative
+      if (group.type === 'Initiative') return true;
+      // Check if any children are Initiatives
       if (group.children && group.children.length > 0) {
-        return group.children.some(child => child.type === 'Initiative' || child.type === 'Deliver' || child.type === 'Delivery');
+        return group.children.some(child => child.type === 'Initiative');
       }
       return false;
     };
