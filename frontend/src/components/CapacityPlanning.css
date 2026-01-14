@@ -141,9 +141,32 @@
   border-bottom: none;
 }
 
+.workload-row.team-row {
+  background-color: #f5f7fa;
+  font-weight: 600;
+}
+
+.workload-row.team-row:hover {
+  background-color: #e8ecf0;
+}
+
+.workload-row.child-row {
+  background-color: #fafbfc;
+}
+
+.workload-row.child-row:hover {
+  background-color: #f0f3f6;
+}
+
+.workload-row.clickable {
+  user-select: none;
+}
+
 .workload-col-assignee {
   font-weight: 500;
   color: #323E48;
+  display: flex;
+  align-items: center;
 }
 
 .workload-col-tickets {

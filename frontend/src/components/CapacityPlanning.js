@@ -246,37 +246,92 @@ function CapacityPlanning({ data }) {
             <div className="workload-col-days">Potential Effort (Days)</div>
             <div className="workload-col-chart">Load</div>
           </div>
-          {assigneeWorkload.slice(0, 15).map((assignee, index) => (
-            <div key={index} className="workload-row">
-              <div className="workload-col-assignee">{assignee.name}</div>
-              <div className="workload-col-tickets">
-                {assignee.openTickets}
-                {assignee.ticketsWithEstimate > 0 && (
-                  <span className="estimated-count"> ({assignee.ticketsWithEstimate})</span>
-                )}
-              </div>
-              <div className="workload-col-estimated">
-                {assignee.estimateHours > 0 ? assignee.estimateHours : '-'}
-              </div>
-              <div className="workload-col-guess">
-                {assignee.defaultHours > 0 ? assignee.defaultHours : '-'}
-              </div>
-              <div className="workload-col-total">
-                {assignee.totalHours > 0 ? assignee.totalHours : '-'}
-              </div>
-              <div className="workload-col-days">
-                {assignee.totalHours > 0 ? (assignee.totalHours / 6).toFixed(1) : '-'}
-              </div>
-              <div className="workload-col-chart">
-                <div className="workload-bar-container">
-                  <div
-                    className="workload-bar"
-                    style={{ width: `${assignee.totalHours > 0 ? (assignee.totalHours / maxWorkload) * 100 : 0}%` }}
-                  ></div>
+          {assigneeWorkload.map((item, index) => {
+            const isTeam = item.isTeam;
+            const hasChildren = isTeam && item.children && item.children.length > 0;
+            const isExpanded = expandedGroups[`team-${item.name}`];
+
+            return (
+              <React.Fragment key={index}>
+                {/* Team/Assignee Row */}
+                <div
+                  className={`workload-row ${isTeam ? 'team-row' : ''} ${hasChildren ? 'clickable' : ''}`}
+                  onClick={() => hasChildren && toggleGroup(`team-${item.name}`)}
+                  style={{ cursor: hasChildren ? 'pointer' : 'default' }}
+                >
+                  <div className="workload-col-assignee" style={{ fontWeight: isTeam ? 600 : 'normal' }}>
+                    {hasChildren && (
+                      <span className="expand-icon" style={{ marginRight: '0.5rem' }}>
+                        {isExpanded ? '▼' : '▶'}
+                      </span>
+                    )}
+                    {item.name}
+                  </div>
+                  <div className="workload-col-tickets">
+                    {item.openTickets}
+                    {item.ticketsWithEstimate > 0 && (
+                      <span className="estimated-count"> ({item.ticketsWithEstimate})</span>
+                    )}
+                  </div>
+                  <div className="workload-col-estimated">
+                    {item.estimateHours > 0 ? item.estimateHours : '-'}
+                  </div>
+                  <div className="workload-col-guess">
+                    {item.defaultHours > 0 ? item.defaultHours : '-'}
+                  </div>
+                  <div className="workload-col-total">
+                    {item.totalHours > 0 ? item.totalHours : '-'}
+                  </div>
+                  <div className="workload-col-days">
+                    {item.totalHours > 0 ? (item.totalHours / 6).toFixed(1) : '-'}
+                  </div>
+                  <div className="workload-col-chart">
+                    <div className="workload-bar-container">
+                      <div
+                        className="workload-bar"
+                        style={{ width: `${item.totalHours > 0 ? (item.totalHours / maxWorkload) * 100 : 0}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+
+                {/* Child Assignee Rows */}
+                {hasChildren && isExpanded && item.children.map((child, childIndex) => (
+                  <div key={`${index}-${childIndex}`} className="workload-row child-row">
+                    <div className="workload-col-assignee" style={{ paddingLeft: '2rem', color: '#6B778C' }}>
+                      {child.name}
+                    </div>
+                    <div className="workload-col-tickets">
+                      {child.openTickets}
+                      {child.ticketsWithEstimate > 0 && (
+                        <span className="estimated-count"> ({child.ticketsWithEstimate})</span>
+                      )}
+                    </div>
+                    <div className="workload-col-estimated">
+                      {child.estimateHours > 0 ? child.estimateHours : '-'}
+                    </div>
+                    <div className="workload-col-guess">
+                      {child.defaultHours > 0 ? child.defaultHours : '-'}
+                    </div>
+                    <div className="workload-col-total">
+                      {child.totalHours > 0 ? child.totalHours : '-'}
+                    </div>
+                    <div className="workload-col-days">
+                      {child.totalHours > 0 ? (child.totalHours / 6).toFixed(1) : '-'}
+                    </div>
+                    <div className="workload-col-chart">
+                      <div className="workload-bar-container">
+                        <div
+                          className="workload-bar"
+                          style={{ width: `${child.totalHours > 0 ? (child.totalHours / maxWorkload) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 

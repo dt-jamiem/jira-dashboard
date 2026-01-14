@@ -1888,11 +1888,13 @@ app.get('/api/capacity-planning', async (req, res) => {
 
     // Calculate team workload (using Team field for DTI items, assignee for others)
     const assigneeWorkload = {};
+    const individualAssignees = {}; // Track individual assignees with their team membership
     let dtiItemCount = 0;
     let dtiTeamsFound = new Set();
 
     openIssues.forEach(issue => {
       let teamName;
+      const assigneeName = issue.fields.assignee?.displayName || 'Unassigned';
 
       // For DTI project items, use the Team field (customfield_10001)
       if (issue.fields.project?.key === 'DTI') {
@@ -1918,9 +1920,32 @@ app.get('/api/capacity-planning', async (req, res) => {
         if (dtiItemCount <= 5) {
           console.log(`  Extracted Team Name: ${teamName}`);
         }
+
+        // Fallback: If no team assigned, check assignee for DBA team members
+        if (teamName === 'Unassigned Team') {
+          const assigneeName = issue.fields.assignee?.displayName || '';
+          if (assigneeName === 'Garvin Wong' || assigneeName === 'Adrian Mazur') {
+            teamName = 'DBA';
+            console.log(`  Fallback: Assigned ${assigneeName} to DBA team`);
+          }
+        }
       } else {
-        // For non-DTI items, use assignee
-        teamName = issue.fields.assignee?.displayName || 'Unassigned';
+        // For non-DTI items, check project-based fallback rules first
+        const projectKey = issue.fields.project?.key;
+
+        if (projectKey === 'INFRA') {
+          teamName = 'Technology Operations';
+        } else if (projectKey === 'DevOps') {
+          teamName = 'DevOps';
+        } else {
+          // All other projects go to "Other" team
+          teamName = 'Other';
+        }
+      }
+
+      // Final check: if DTI item is still "Unassigned Team" and not caught by fallbacks, assign to "Other"
+      if (issue.fields.project?.key === 'DTI' && teamName === 'Unassigned Team') {
+        teamName = 'Other';
       }
 
       if (!assigneeWorkload[teamName]) {
@@ -1959,6 +1984,46 @@ app.get('/api/capacity-planning', async (req, res) => {
           assigneeWorkload[teamName].ticketsWithDefault++;
         }
       }
+
+      // Track individual assignees within their teams
+      if (!individualAssignees[teamName]) {
+        individualAssignees[teamName] = {};
+      }
+
+      if (!individualAssignees[teamName][assigneeName]) {
+        individualAssignees[teamName][assigneeName] = {
+          openTickets: 0,
+          byPriority: {},
+          oldestTicket: null,
+          avgAge: 0,
+          tickets: [],
+          estimateSeconds: 0,
+          defaultSeconds: 0,
+          ticketsWithEstimate: 0,
+          ticketsWithDefault: 0
+        };
+      }
+
+      individualAssignees[teamName][assigneeName].openTickets++;
+      individualAssignees[teamName][assigneeName].byPriority[priority] =
+        (individualAssignees[teamName][assigneeName].byPriority[priority] || 0) + 1;
+      individualAssignees[teamName][assigneeName].tickets.push(ticketAge);
+
+      if (!individualAssignees[teamName][assigneeName].oldestTicket ||
+          ticketAge > individualAssignees[teamName][assigneeName].oldestTicket) {
+        individualAssignees[teamName][assigneeName].oldestTicket = ticketAge;
+      }
+
+      if (issue.fields.timeoriginalestimate) {
+        individualAssignees[teamName][assigneeName].estimateSeconds += issue.fields.timeoriginalestimate;
+        individualAssignees[teamName][assigneeName].ticketsWithEstimate++;
+      } else {
+        const defaultEst = getDefaultEstimate(issue);
+        if (defaultEst > 0) {
+          individualAssignees[teamName][assigneeName].defaultSeconds += defaultEst;
+          individualAssignees[teamName][assigneeName].ticketsWithDefault++;
+        }
+      }
     });
 
     console.log(`\nWorkload Calculation Summary:`);
@@ -1982,6 +2047,25 @@ app.get('/api/capacity-planning', async (req, res) => {
 
       delete assigneeWorkload[teamName].estimateSeconds; // Remove seconds, keep hours
       delete assigneeWorkload[teamName].defaultSeconds;
+    });
+
+    // Process individual assignees: calculate averages and convert to hours
+    Object.keys(individualAssignees).forEach(teamName => {
+      Object.keys(individualAssignees[teamName]).forEach(assigneeName => {
+        const assignee = individualAssignees[teamName][assigneeName];
+        const ages = assignee.tickets;
+        if (ages.length > 0) {
+          assignee.avgAge = Math.round(ages.reduce((a, b) => a + b, 0) / ages.length);
+        }
+        delete assignee.tickets;
+
+        assignee.estimateHours = Math.round(assignee.estimateSeconds / 3600);
+        assignee.defaultHours = Math.round(assignee.defaultSeconds / 3600);
+        assignee.totalHours = assignee.estimateHours + assignee.defaultHours;
+
+        delete assignee.estimateSeconds;
+        delete assignee.defaultSeconds;
+      });
     });
 
     // Calculate resolution metrics
@@ -2101,11 +2185,34 @@ app.get('/api/capacity-planning', async (req, res) => {
     const resolvedDefaultHours = Math.round(totalResolvedDefault / 3600);
     const resolvedTotalHours = resolvedEstimateHours + resolvedDefaultHours;
 
-    // Sort assignees by workload (total hours including defaults, then by open tickets)
+    // Create hierarchical structure: teams as parents, assignees as children
     const sortedAssignees = Object.entries(assigneeWorkload)
-      .map(([name, data]) => ({ name, ...data }))
+      .map(([teamName, teamData]) => {
+        // Get individual assignees for this team
+        const assignees = individualAssignees[teamName] || {};
+        const children = Object.entries(assignees)
+          .map(([assigneeName, assigneeData]) => ({
+            name: assigneeName,
+            ...assigneeData,
+            isAssignee: true
+          }))
+          .sort((a, b) => {
+            // Sort assignees by total hours first, then by ticket count
+            if (b.totalHours !== a.totalHours) {
+              return b.totalHours - a.totalHours;
+            }
+            return b.openTickets - a.openTickets;
+          });
+
+        return {
+          name: teamName,
+          ...teamData,
+          isTeam: true,
+          children: children
+        };
+      })
       .sort((a, b) => {
-        // Sort by total hours first, then by ticket count
+        // Sort teams by total hours first, then by ticket count
         if (b.totalHours !== a.totalHours) {
           return b.totalHours - a.totalHours;
         }
@@ -2237,6 +2344,14 @@ app.get('/api/capacity-planning', async (req, res) => {
             teamName = teamField;
           }
 
+          // Fallback: If no team assigned, check assignee for DBA team members
+          if (teamName === 'Unassigned Team') {
+            const assigneeName = issue.fields.assignee?.displayName || '';
+            if (assigneeName === 'Garvin Wong' || assigneeName === 'Adrian Mazur') {
+              teamName = 'DBA';
+            }
+          }
+
           // If has Epic parent, use Epic but group under Team under DTI Requests
           if (issue.fields.parent) {
             groupKey = issue.fields.parent.key;
@@ -2250,21 +2365,56 @@ app.get('/api/capacity-planning', async (req, res) => {
             parentGroup = `DTI-Team: ${teamName}`;
           }
         }
-        // If issue has a parent (Epic), use that and group under project
-        else if (issue.fields.parent) {
-          groupKey = issue.fields.parent.key;
-          groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
-          groupType = 'Epic';
-          // Group Epic under its project
-          const projectName = issue.fields.project?.name || projectKey;
-          parentGroup = `${projectKey}: ${projectName}`;
+        // For INFRA project items, group under Technology Operations team
+        else if (projectKey === 'INFRA') {
+          const teamName = 'Technology Operations';
+
+          // If has Epic parent, use Epic but group under Team
+          if (issue.fields.parent) {
+            groupKey = issue.fields.parent.key;
+            groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+            groupType = 'Epic';
+            parentGroup = `INFRA-Team: ${teamName}`;
+          } else {
+            groupKey = `INFRA-${issueTypeName}`;
+            groupName = `INFRA: ${issueTypeName}`;
+            groupType = 'Issue Type';
+            parentGroup = `INFRA-Team: ${teamName}`;
+          }
         }
-        // For other projects without parent, group by issue type
+        // For DevOps project items, group under DevOps team
+        else if (projectKey === 'DevOps') {
+          const teamName = 'DevOps';
+
+          // If has Epic parent, use Epic but group under Team
+          if (issue.fields.parent) {
+            groupKey = issue.fields.parent.key;
+            groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+            groupType = 'Epic';
+            parentGroup = `DevOps-Team: ${teamName}`;
+          } else {
+            groupKey = `DevOps-${issueTypeName}`;
+            groupName = `DevOps: ${issueTypeName}`;
+            groupType = 'Issue Type';
+            parentGroup = `DevOps-Team: ${teamName}`;
+          }
+        }
+        // For all other projects not in main teams, group under "Other" team
         else {
-          groupKey = `${projectKey}-${issueTypeName}`;
-          groupName = `${projectKey}: ${issueTypeName}`;
-          groupType = 'Issue Type';
-          parentGroup = null;
+          const teamName = 'Other';
+
+          // If has Epic parent, use Epic but group under "Other" team
+          if (issue.fields.parent) {
+            groupKey = issue.fields.parent.key;
+            groupName = `${issue.fields.parent.key}: ${issue.fields.parent.fields?.summary || 'Unknown'}`;
+            groupType = 'Epic';
+            parentGroup = `Other-Team: ${teamName}`;
+          } else {
+            groupKey = `${projectKey}-${issueTypeName}`;
+            groupName = `${projectKey}: ${issueTypeName}`;
+            groupType = 'Issue Type';
+            parentGroup = `Other-Team: ${teamName}`;
+          }
         }
       }
 
@@ -2396,6 +2546,120 @@ app.get('/api/capacity-planning', async (req, res) => {
         type: 'Project Group',
         ...dtiTotals,
         children: dtiTeamGroups
+      });
+    }
+
+    // Fifth pass: Group INFRA teams under "Technology Operations"
+    const infraTeamGroups = hierarchicalGroups.filter(g => g.key && g.key.startsWith('INFRA-Team:'));
+    if (infraTeamGroups.length > 0) {
+      // Remove INFRA team groups from the main array
+      infraTeamGroups.forEach(teamGroup => {
+        const index = hierarchicalGroups.findIndex(g => g.key === teamGroup.key);
+        if (index > -1) {
+          hierarchicalGroups.splice(index, 1);
+        }
+      });
+
+      // Clean up team names (remove "INFRA-Team: " prefix for display)
+      infraTeamGroups.forEach(teamGroup => {
+        teamGroup.name = teamGroup.name.replace('INFRA-Team: ', '');
+        teamGroup.type = 'Team';
+      });
+
+      // Sort teams by total hours
+      infraTeamGroups.sort((a, b) => b.totalHours - a.totalHours);
+
+      // Calculate totals for INFRA
+      const infraTotals = infraTeamGroups.reduce((acc, team) => ({
+        tickets: acc.tickets + team.tickets,
+        estimateHours: acc.estimateHours + team.estimateHours,
+        defaultHours: acc.defaultHours + team.defaultHours,
+        totalHours: acc.totalHours + team.totalHours
+      }), { tickets: 0, estimateHours: 0, defaultHours: 0, totalHours: 0 });
+
+      // Add Technology Operations as parent with teams as children
+      hierarchicalGroups.push({
+        key: 'Technology Operations',
+        name: 'Technology Operations',
+        type: 'Project Group',
+        ...infraTotals,
+        children: infraTeamGroups
+      });
+    }
+
+    // Sixth pass: Group DevOps teams under "DevOps"
+    const devopsTeamGroups = hierarchicalGroups.filter(g => g.key && g.key.startsWith('DevOps-Team:'));
+    if (devopsTeamGroups.length > 0) {
+      // Remove DevOps team groups from the main array
+      devopsTeamGroups.forEach(teamGroup => {
+        const index = hierarchicalGroups.findIndex(g => g.key === teamGroup.key);
+        if (index > -1) {
+          hierarchicalGroups.splice(index, 1);
+        }
+      });
+
+      // Clean up team names (remove "DevOps-Team: " prefix for display)
+      devopsTeamGroups.forEach(teamGroup => {
+        teamGroup.name = teamGroup.name.replace('DevOps-Team: ', '');
+        teamGroup.type = 'Team';
+      });
+
+      // Sort teams by total hours
+      devopsTeamGroups.sort((a, b) => b.totalHours - a.totalHours);
+
+      // Calculate totals for DevOps
+      const devopsTotals = devopsTeamGroups.reduce((acc, team) => ({
+        tickets: acc.tickets + team.tickets,
+        estimateHours: acc.estimateHours + team.estimateHours,
+        defaultHours: acc.defaultHours + team.defaultHours,
+        totalHours: acc.totalHours + team.totalHours
+      }), { tickets: 0, estimateHours: 0, defaultHours: 0, totalHours: 0 });
+
+      // Add DevOps as parent with teams as children
+      hierarchicalGroups.push({
+        key: 'DevOps',
+        name: 'DevOps',
+        type: 'Project Group',
+        ...devopsTotals,
+        children: devopsTeamGroups
+      });
+    }
+
+    // Seventh pass: Group Other teams under "Other"
+    const otherTeamGroups = hierarchicalGroups.filter(g => g.key && g.key.startsWith('Other-Team:'));
+    if (otherTeamGroups.length > 0) {
+      // Remove Other team groups from the main array
+      otherTeamGroups.forEach(teamGroup => {
+        const index = hierarchicalGroups.findIndex(g => g.key === teamGroup.key);
+        if (index > -1) {
+          hierarchicalGroups.splice(index, 1);
+        }
+      });
+
+      // Clean up team names (remove "Other-Team: " prefix for display)
+      otherTeamGroups.forEach(teamGroup => {
+        teamGroup.name = teamGroup.name.replace('Other-Team: ', '');
+        teamGroup.type = 'Team';
+      });
+
+      // Sort teams by total hours
+      otherTeamGroups.sort((a, b) => b.totalHours - a.totalHours);
+
+      // Calculate totals for Other
+      const otherTotals = otherTeamGroups.reduce((acc, team) => ({
+        tickets: acc.tickets + team.tickets,
+        estimateHours: acc.estimateHours + team.estimateHours,
+        defaultHours: acc.defaultHours + team.defaultHours,
+        totalHours: acc.totalHours + team.totalHours
+      }), { tickets: 0, estimateHours: 0, defaultHours: 0, totalHours: 0 });
+
+      // Add Other as parent with teams as children
+      hierarchicalGroups.push({
+        key: 'Other',
+        name: 'Other',
+        type: 'Project Group',
+        ...otherTotals,
+        children: otherTeamGroups
       });
     }
 
