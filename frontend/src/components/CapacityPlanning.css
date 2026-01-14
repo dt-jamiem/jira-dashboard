@@ -695,6 +695,14 @@
 }
 
 /* Team Capacity Cards */
+.capacity-note {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6B778C;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
+}
+
 .team-capacity-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

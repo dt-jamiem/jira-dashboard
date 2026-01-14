@@ -5,6 +5,11 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### January 2026
+- **Epic Filtering in Workload Calculations**: Refined capacity planning to exclude Epic issue types from team workload distribution (January 14, 2026)
+  - Epic issue types no longer counted in Team Workload distribution table
+  - Epics still visible in hierarchical Parent Grouping view for planning purposes
+  - Focuses workload calculations on actionable work items (Stories, Tasks, Bugs, etc.)
+  - Significantly reduces "Other" team assignments that were primarily Epics
 - **Technology Roadmap Integration & Private Cloud Team**: Enhanced capacity planning with roadmap tracking and additional team (January 14, 2026)
   - Updated TR query to exclude 'Idea' types and include 'Delivery' types for active roadmap items
   - Delivery types now appear in "Deliver" bucket, Initiatives remain in "Improve" bucket
@@ -12,6 +17,7 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
   - Fixed team assignment detection to read team field (customfield_10001) for all projects including Technology Group
   - TG tickets now properly assigned to their designated teams (DevOps, Tech Ops, etc.) instead of defaulting to "Other"
   - Real-time capacity updates when team assignments are changed in Jira
+  - Added capacity calculation note explaining 30-day period based on 6 productive hours per day per engineer
 - **Enhanced Guess Estimate Rules & Visual Summary**: Updated estimation logic and added visual rules display (January 14, 2026)
   - Increased estimates for User Stories and Tasks: 8 hours (To Do), 4 hours (In Progress)
   - Added higher-complexity DTI request types: Build/Deployment Issues, Connectivity Issue, Branch Request get 6 hours (To Do), 3 hours (In Progress)

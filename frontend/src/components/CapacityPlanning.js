@@ -242,6 +242,7 @@ function CapacityPlanning({ data }) {
       {teamCapacity && Object.keys(teamCapacity).length > 0 && (
         <div className="capacity-section">
           <h3>Team Capacity Utilization ({summary.workingDays} working days @ {summary.hoursPerDay}h/day)</h3>
+          <p className="capacity-note">Available capacity calculated for a 30-day period based on 6 productive hours per day per engineer</p>
           <div className="team-capacity-grid">
             {Object.entries(teamCapacity).map(([teamName, metrics]) => {
               const utilizationColor = metrics.utilizationPercent > 100 ? '#FF6B6B' :

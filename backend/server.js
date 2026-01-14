@@ -1955,6 +1955,11 @@ app.get('/api/capacity-planning', async (req, res) => {
     let dtiTeamsFound = new Set();
 
     openIssues.forEach(issue => {
+      // Skip Epic issue types - they're not included in workload calculations
+      if (issue.fields.issuetype?.name === 'Epic') {
+        return;
+      }
+
       let teamName;
       const assigneeName = issue.fields.assignee?.displayName || 'Unassigned';
 
@@ -2009,12 +2014,14 @@ app.get('/api/capacity-planning', async (req, res) => {
         } else {
           // All other projects without team field go to "Other" team
           teamName = 'Other';
+          console.log(`  ℹ️  Assigned to Other: ${issue.key} (${projectKey}) - No team field set`);
         }
       }
 
       // Final check: if DTI item is still "Unassigned Team" and not caught by fallbacks, assign to "Other"
       if (issue.fields.project?.key === 'DTI' && teamName === 'Unassigned Team') {
         teamName = 'Other';
+        console.log(`  ℹ️  Assigned to Other: ${issue.key} (DTI) - Unassigned team`);
       }
 
       if (!assigneeWorkload[teamName]) {
