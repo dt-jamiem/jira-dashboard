@@ -1746,6 +1746,40 @@ app.get('/api/capacity-planning', async (req, res) => {
     date.setDate(date.getDate() - days);
     const dateStr = date.toISOString().split('T')[0];
 
+    // Team capacity configuration
+    const teamCapacity = {
+      'DBA': {
+        engineers: 2,
+        members: ['Garvin Wong', 'Adrian Mazur']
+      },
+      'DevOps': {
+        engineers: 6,
+        members: ['Andrew Sumner', 'Phill Dellow', 'Vakhtangi Mestvirishvili', 'Sundaresan Thandvan', 'Robert Higgins', 'Alex Eastlake']
+      },
+      'Technology Operations': {
+        engineers: 4,
+        members: ['Mark Fairmaid', 'Ann Winston', 'Suresh Kaniyappa', 'Graham Wilson']
+      }
+    };
+
+    // Calculate available capacity per team
+    // Assuming 6 hours productive work per day
+    const hoursPerDay = 6;
+    const workingDaysInPeriod = Math.floor(days * 5 / 7); // Approximate working days (excluding weekends)
+
+    const teamAvailableCapacity = {};
+    Object.keys(teamCapacity).forEach(teamName => {
+      const engineers = teamCapacity[teamName].engineers;
+      teamAvailableCapacity[teamName] = engineers * workingDaysInPeriod * hoursPerDay;
+    });
+
+    console.log(`\nCapacity Calculation:`);
+    console.log(`- Period: ${days} days (${workingDaysInPeriod} working days)`);
+    console.log(`- Hours per day: ${hoursPerDay}`);
+    Object.keys(teamAvailableCapacity).forEach(team => {
+      console.log(`- ${team}: ${teamCapacity[team].engineers} engineers × ${workingDaysInPeriod} days × ${hoursPerDay}h = ${teamAvailableCapacity[team]}h available capacity`);
+    });
+
     // Base JQL for capacity planning - aligned with dashboard filters
     const baseJQL = '(Project IN (DEVOPS, TechOps, "Technology Group", "Technology Roadmap") OR (Project = DTI AND "Team[Team]" IN (01c3b859-1307-41e3-8a88-24c701dd1713, 9888ca76-8551-47b3-813f-4bf5df9e9762, 9b7aba3a-a76b-46b8-8a3b-658baad7c1a3, a092fa48-f541-4358-90b8-ba6caccceb72)))';
 
@@ -2693,6 +2727,47 @@ app.get('/api/capacity-planning', async (req, res) => {
       return !isBau && !isImprove;
     }).sort((a, b) => b.totalHours - a.totalHours);
 
+    // Calculate capacity utilization for each team
+    const teamCapacityMetrics = {};
+    Object.keys(teamCapacity).forEach(teamName => {
+      const teamWorkload = assigneeWorkload[teamName];
+      const availableCapacity = teamAvailableCapacity[teamName];
+
+      if (teamWorkload) {
+        const utilizationPercent = availableCapacity > 0
+          ? Math.round((teamWorkload.totalHours / availableCapacity) * 100)
+          : 0;
+
+        teamCapacityMetrics[teamName] = {
+          engineers: teamCapacity[teamName].engineers,
+          members: teamCapacity[teamName].members,
+          availableCapacityHours: availableCapacity,
+          workloadHours: teamWorkload.totalHours,
+          utilizationPercent: utilizationPercent,
+          openTickets: teamWorkload.openTickets,
+          estimateHours: teamWorkload.estimateHours,
+          defaultHours: teamWorkload.defaultHours
+        };
+      } else {
+        teamCapacityMetrics[teamName] = {
+          engineers: teamCapacity[teamName].engineers,
+          members: teamCapacity[teamName].members,
+          availableCapacityHours: availableCapacity,
+          workloadHours: 0,
+          utilizationPercent: 0,
+          openTickets: 0,
+          estimateHours: 0,
+          defaultHours: 0
+        };
+      }
+    });
+
+    console.log(`\nTeam Capacity Utilization:`);
+    Object.keys(teamCapacityMetrics).forEach(team => {
+      const metrics = teamCapacityMetrics[team];
+      console.log(`- ${team}: ${metrics.workloadHours}h / ${metrics.availableCapacityHours}h = ${metrics.utilizationPercent}% utilization`);
+    });
+
     res.json({
       summary: {
         totalOpenTickets: openIssues.length,
@@ -2701,6 +2776,8 @@ app.get('/api/capacity-planning', async (req, res) => {
         avgResolutionTime: avgResolutionTime,
         velocity: velocity,
         period: days,
+        workingDays: workingDaysInPeriod,
+        hoursPerDay: hoursPerDay,
         openEstimateHours: openEstimateHours,
         openDefaultHours: openDefaultHours,
         openTotalHours: openTotalHours,
@@ -2717,6 +2794,7 @@ app.get('/api/capacity-planning', async (req, res) => {
         resolvedTicketsWithEstimate: resolvedTicketsWithEstimate,
         resolvedTicketsWithDefault: resolvedTicketsWithDefault
       },
+      teamCapacity: teamCapacityMetrics,
       assigneeWorkload: sortedAssignees,
       ticketFlow: flowData,
       parentGrouping: {

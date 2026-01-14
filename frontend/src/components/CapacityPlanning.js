@@ -15,7 +15,7 @@ function CapacityPlanning({ data }) {
     );
   }
 
-  const { summary, assigneeWorkload, ticketFlow, parentGrouping} = data;
+  const { summary, assigneeWorkload, ticketFlow, parentGrouping, teamCapacity } = data;
 
   const toggleGroup = (groupKey) => {
     setExpandedGroups(prev => ({
@@ -232,6 +232,70 @@ function CapacityPlanning({ data }) {
           <div className="capacity-card-trend">{flowTrend}</div>
         </div>
       </div>
+
+      {/* Team Capacity Utilization */}
+      {teamCapacity && Object.keys(teamCapacity).length > 0 && (
+        <div className="capacity-section">
+          <h3>Team Capacity Utilization ({summary.workingDays} working days @ {summary.hoursPerDay}h/day)</h3>
+          <div className="team-capacity-grid">
+            {Object.entries(teamCapacity).map(([teamName, metrics]) => {
+              const utilizationColor = metrics.utilizationPercent > 100 ? '#FF6B6B' :
+                                      metrics.utilizationPercent > 80 ? '#FFA500' :
+                                      '#A9DE33';
+
+              return (
+                <div key={teamName} className="team-capacity-card">
+                  <div className="team-capacity-header">
+                    <h4>{teamName}</h4>
+                    <div className="team-engineers">{metrics.engineers} Engineers</div>
+                  </div>
+
+                  <div className="team-capacity-metrics">
+                    <div className="capacity-metric">
+                      <div className="capacity-metric-label">Available Capacity</div>
+                      <div className="capacity-metric-value">{metrics.availableCapacityHours}h</div>
+                    </div>
+                    <div className="capacity-metric">
+                      <div className="capacity-metric-label">Current Workload</div>
+                      <div className="capacity-metric-value">{metrics.workloadHours}h</div>
+                    </div>
+                    <div className="capacity-metric">
+                      <div className="capacity-metric-label">Open Tickets</div>
+                      <div className="capacity-metric-value">{metrics.openTickets}</div>
+                    </div>
+                  </div>
+
+                  <div className="capacity-utilization-bar">
+                    <div
+                      className="capacity-utilization-fill"
+                      style={{
+                        width: `${Math.min(metrics.utilizationPercent, 100)}%`,
+                        backgroundColor: utilizationColor
+                      }}
+                    ></div>
+                  </div>
+
+                  <div className="capacity-utilization-label" style={{ color: utilizationColor }}>
+                    <strong>{metrics.utilizationPercent}%</strong> Utilization
+                    {metrics.utilizationPercent > 100 && (
+                      <span className="over-capacity"> ({metrics.utilizationPercent - 100}% over capacity)</span>
+                    )}
+                  </div>
+
+                  <div className="team-members">
+                    <strong>Team Members:</strong>
+                    <div className="members-list">
+                      {metrics.members.map((member, idx) => (
+                        <span key={idx} className="member-badge">{member}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Team Workload */}
       <div className="capacity-section">

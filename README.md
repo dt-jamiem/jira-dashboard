@@ -5,6 +5,14 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### January 2026
+- **Team Capacity Utilization**: Added team capacity calculations and visualization (January 14, 2026)
+  - Configured team capacity with engineer counts: DBA (2), DevOps (6), Technology Operations (4)
+  - Calculates available capacity based on working days and productive hours per day (6h/day)
+  - Visual capacity cards showing available capacity vs. current workload for each team
+  - Color-coded utilization bars: Green (≤80%), Orange (80-100%), Red (>100% over capacity)
+  - Displays utilization percentage with over-capacity warnings
+  - Lists team members for each sub-team with member badges
+  - Helps identify over-utilized and under-utilized teams for better resource planning
 - **Capacity Planning Dashboard**: Added comprehensive capacity planning with team-based workload analysis (January 14, 2026)
   - Three-level hierarchical grouping for DTI Requests: DTI Requests > Teams > Epics/Items
   - Team-based workload calculation for DTI project using Atlassian Team field (customfield_10001)
@@ -118,6 +126,13 @@ The dashboard is organized into five main tabs:
 ### Capacity Planning Tab
 - **Capacity Planning Dashboard**: Comprehensive team-based workload analysis and forecasting (last 30 days)
   - **Summary Cards**: Total story points, team velocity, completion forecast, and cumulative flow metrics
+  - **Team Capacity Utilization**: Visual cards showing capacity analysis for each sub-team
+    - Available capacity calculated from engineer count × working days × 6 hours/day
+    - Current workload hours from open tickets (estimated + guessed story points)
+    - Color-coded utilization bar: Green (≤80%), Orange (80-100%), Red (>100%)
+    - Utilization percentage with over-capacity warnings
+    - Team members list with badges
+    - Configured teams: DBA (2 engineers), DevOps (6 engineers), Technology Operations (4 engineers)
   - **Workload by Assignee**: Table showing each team member's workload with:
     - Total tickets (with breakdown of estimated vs unestimated)
     - Story points (estimated + guessed for unestimated tickets)
@@ -304,6 +319,30 @@ Comprehensive team-based workload analysis and forecasting dashboard (last 30 da
 - **Team Velocity**: Average story points completed per day based on the 30-day period
 - **Completion Forecast**: Estimated days to complete current workload at current velocity
 - **Cumulative Flow**: Net change in open tickets (created vs resolved) over the period
+
+**Team Capacity Utilization:**
+Visual capacity cards showing detailed capacity analysis for each sub-team:
+- **Team Configuration**:
+  - **DBA**: 2 engineers (Garvin Wong, Adrian Mazur)
+  - **DevOps**: 6 engineers (Andrew Sumner, Phill Dellow, Vakhtangi Mestvirishvili, Sundaresan Thandvan, Robert Higgins, Alex Eastlake)
+  - **Technology Operations**: 4 engineers (Mark Fairmaid, Ann Winston, Suresh Kaniyappa, Graham Wilson)
+- **Capacity Calculation**:
+  - Available capacity = Engineers × Working days × 6 hours/day
+  - Working days calculated as ~5/7 of period days (excludes weekends)
+  - For 30-day period: approximately 21-22 working days
+- **Metrics Displayed**:
+  - Available capacity hours for the period
+  - Current workload hours (from open tickets)
+  - Number of open tickets
+  - Utilization percentage with color coding
+- **Visual Indicators**:
+  - Color-coded utilization bar:
+    - Green (#A9DE33): ≤80% utilization - healthy capacity
+    - Orange (#FFA500): 80-100% utilization - near capacity
+    - Red (#FF6B6B): >100% utilization - over capacity
+  - Over-capacity warning showing percentage over limit
+  - Team member badges showing all engineers on the team
+- **Purpose**: Helps identify over-utilized teams requiring resource balancing and under-utilized teams with available capacity
 
 **Workload by Assignee:**
 A detailed table showing each team member's current workload:
