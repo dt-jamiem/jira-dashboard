@@ -31,9 +31,9 @@ function ServiceDeskAnalytics({ analytics }) {
           <div className="summary-subtext">{totalResolvedInPeriod} resolved</div>
         </div>
         <div className="summary-card">
-          <div className="summary-value">{analytics.allCounts.issueTypes['[System] Incident'] + analytics.allCounts.issueTypes['[System] Problem'] + analytics.allCounts.issueTypes['Build Issue']}</div>
+          <div className="summary-value">{(analytics.allCounts.issueTypes['[System] Incident'] || 0) + (analytics.allCounts.issueTypes['[System] Problem'] || 0) + (analytics.allCounts.issueTypes['Build Issue'] || 0)}</div>
           <div className="summary-label">Incidents & Build Issues</div>
-          <div className="summary-subtext">{Math.round(((analytics.allCounts.issueTypes['[System] Incident'] + analytics.allCounts.issueTypes['[System] Problem'] + analytics.allCounts.issueTypes['Build Issue']) / analytics.totalTickets) * 100)}% of all tickets</div>
+          <div className="summary-subtext">{Math.round((((analytics.allCounts.issueTypes['[System] Incident'] || 0) + (analytics.allCounts.issueTypes['[System] Problem'] || 0) + (analytics.allCounts.issueTypes['Build Issue'] || 0)) / analytics.totalTickets) * 100)}% of all tickets</div>
         </div>
         <div className={`summary-card ${analytics.avgResolutionTimeDays > 5 ? 'warning' : ''}`}>
           <div className="summary-value">{analytics.avgResolutionTimeDays ? analytics.avgResolutionTimeDays.toFixed(1) : '0'}</div>

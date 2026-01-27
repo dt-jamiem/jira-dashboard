@@ -5,6 +5,10 @@ A comprehensive dashboard for visualizing Jira data with React frontend and Node
 ## Recent Updates
 
 ### January 2026
+- **Fixed NaN Display in Incidents Tile**: Resolved issue where Incidents & Build Issues tile showed "NaN" when issue types were missing (January 28, 2026)
+  - Added default values (|| 0) to prevent undefined issue type counts from causing NaN calculations
+  - Ensures both count and percentage display correctly even when specific issue types don't exist in the data
+  - Affects Service Desk Analytics summary card for Incidents & Build Issues
 - **Epic Filtering in Workload Calculations**: Refined capacity planning to exclude Epic issue types from team workload distribution (January 14, 2026)
   - Epic issue types no longer counted in Team Workload distribution table
   - Epics still visible in hierarchical Parent Grouping view for planning purposes
